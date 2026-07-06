@@ -1,0 +1,130 @@
+import { z } from "zod";
+import { User, ROLES } from "../models/User.js";
+import { AppError } from "../utils/AppError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { created, success } from "../utils/http.js";
+
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
+
+export const listUsersSchema = z.object({
+  query: z.object({
+    role: z.enum(ROLES).optional(),
+    search: z.string().trim().max(100).optional(),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+  }),
+});
+
+export const createUserSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(2).max(120),
+    email: z.string().trim().email().max(255),
+    password: z.string().min(8).max(128).optional(),
+    role: z.enum(ROLES).default("employee"),
+    department: z.string().trim().max(100).optional(),
+    designation: z.string().trim().max(100).optional(),
+    phone: z.string().trim().max(32).optional(),
+    salary: z.number().optional(),
+  }),
+});
+
+export const updateUserSchema = z.object({
+  params: z.object({ id: objectId }),
+  body: z.object({
+    name: z.string().trim().min(2).max(120).optional(),
+    role: z.enum(ROLES).optional(),
+    department: z.string().trim().max(100).optional(),
+    designation: z.string().trim().max(100).optional(),
+    phone: z.string().trim().max(32).optional(),
+    avatar: z.string().url().optional(),
+    status: z.enum(["active", "inactive", "on-leave"]).optional(),
+  }),
+});
+
+export const idParamSchema = z.object({ params: z.object({ id: objectId }) });
+
+export const listUsers = asyncHandler(async (req, res) => {
+  const { role, search, page, limit } = req.validated.query;
+  const filter = { companyId: req.user.companyId };
+  if (role) filter.role = role;
+  if (search) {
+    filter.$or = [
+      { name: new RegExp(search, "i") },
+      { email: new RegExp(search, "i") },
+      { department: new RegExp(search, "i") },
+      { designation: new RegExp(search, "i") },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    User.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    User.countDocuments(filter),
+  ]);
+
+  return success(res, items, 200, { page, limit, total, pages: Math.ceil(total / limit) });
+});
+
+export const createUser = asyncHandler(async (req, res) => {
+  const existing = await User.exists({ email: req.validated.body.email });
+  if (existing) throw new AppError("Email is already registered", 409);
+
+  const user = new User({
+    ...req.validated.body,
+    companyId: req.user.companyId,
+  });
+
+  if (req.validated.body.password) {
+    await user.setPassword(req.validated.body.password);
+  } else {
+    await user.setPassword(`BrajMart@${new Date().getFullYear()}`);
+  }
+
+  await user.save();
+  return created(res, user);
+});
+
+export const getUser = asyncHandler(async (req, res) => {
+  const canReadTeam = ["hr", "team-manager", "super-admin"].includes(req.user.role);
+  if (req.validated.params.id !== req.user.id && !canReadTeam) {
+    throw new AppError("You do not have permission to view this user", 403);
+  }
+
+  const user = await User.findOne({ _id: req.validated.params.id, companyId: req.user.companyId });
+  if (!user) throw new AppError("User not found", 404);
+  return success(res, user);
+});
+
+export const updateUser = asyncHandler(async (req, res) => {
+  const isSelf = req.validated.params.id === req.user.id;
+  const canManageUsers = ["hr", "super-admin"].includes(req.user.role);
+
+  if (!isSelf && !canManageUsers) {
+    throw new AppError("You do not have permission to update this user", 403);
+  }
+
+  if (isSelf && !canManageUsers) {
+    delete req.validated.body.role;
+    delete req.validated.body.status;
+  }
+
+  const user = await User.findOneAndUpdate(
+    { _id: req.validated.params.id, companyId: req.user.companyId },
+    { $set: req.validated.body },
+    { new: true, runValidators: true },
+  );
+  if (!user) throw new AppError("User not found", 404);
+  return success(res, user);
+});
+
+export const removeUser = asyncHandler(async (req, res) => {
+  const user = await User.findOneAndUpdate(
+    { _id: req.validated.params.id, companyId: req.user.companyId },
+    { $set: { status: "inactive" } },
+    { new: true },
+  );
+  if (!user) throw new AppError("User not found", 404);
+  return success(res, user);
+});

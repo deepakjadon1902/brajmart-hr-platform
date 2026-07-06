@@ -48,6 +48,8 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   hr: [
     { to: "/hr/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/employee/dashboard", label: "Employee Portal", icon: User },
+    { to: "/team-manager/dashboard", label: "Team Manager Portal", icon: ClipboardList },
     { to: "/hr/employees", label: "Employees", icon: Users },
     { to: "/hr/clients", label: "Clients", icon: Building2 },
     { to: "/hr/attendance", label: "Attendance", icon: Activity },
@@ -77,6 +79,9 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   "super-admin": [
     { to: "/super-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/employee/dashboard", label: "Employee Portal", icon: User },
+    { to: "/hr/dashboard", label: "HR Portal", icon: Users },
+    { to: "/team-manager/dashboard", label: "Team Manager Portal", icon: ClipboardList },
     { to: "/super-admin/companies", label: "Companies", icon: Building2 },
     { to: "/super-admin/roles", label: "Roles", icon: ShieldCheck },
     { to: "/super-admin/permissions", label: "Permissions", icon: ShieldCheck },

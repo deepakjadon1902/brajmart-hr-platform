@@ -32,7 +32,11 @@ The API listens on `http://localhost:5000`. The Vite frontend proxies `/api` to 
 
 - `GET /api/v1/health`
 - `POST /api/v1/auth/login`
+- `GET /api/v1/auth/google/config`
 - `POST /api/v1/auth/google`
+- `POST /api/v1/auth/password-reset/request`
+- `POST /api/v1/auth/password-reset/verify`
+- `POST /api/v1/auth/password-reset/complete`
 - `POST /api/v1/auth/refresh`
 - `GET /api/v1/auth/me`
 - `GET/POST/PATCH/DELETE /api/v1/users`
@@ -59,20 +63,15 @@ If startup shows `bad auth : authentication failed`, check `backend/.env`:
 - Confirm Atlas Network Access allows your current IP address.
 - Restart `npm run dev` after changing `.env`.
 
-## Demo Accounts
+## Permanent Accounts
 
-On startup the backend seeds the existing demo accounts when they are missing.
+On startup the backend ensures the permanent HR and super-admin accounts exist and are active. Configure the same backend environment in production before using these accounts.
 
-- `user1@brajmart.com`
-- `hr@demo.com`
-- `manager@demo.com`
-- `admin@demo.com`
-- `marketing@demo.com`
-
-Password: `demo1234`
+- HR portal: `hr@brajmart.com`
+- Super admin portal: `anish@brajmart.com`
 
 ## Deployment
 
 Use Render for the backend with `backend/render.yaml`.
 
-Use Vercel for the frontend. Replace `YOUR_RENDER_SERVICE` in `vercel.json` with your Render service host, or set `VITE_API_BASE_URL` directly to your Render API URL.
+Use Vercel for the frontend. The current frontend rewrite points `/api/*` to `https://brajmart-hr-platform-2.onrender.com/api/*`; alternatively set `VITE_API_BASE_URL` to `https://brajmart-hr-platform-2.onrender.com/api/v1`.

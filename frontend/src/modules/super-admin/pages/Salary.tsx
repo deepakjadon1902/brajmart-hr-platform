@@ -45,9 +45,13 @@ export default function Salary() {
             render: (row) => (
               <Button
                 size="sm"
-                onClick={() => {
-                  dispatch(paySalary({ employeeId: String(row.id), month }));
-                  toast.success(`Salary released for ${row.name}`);
+                onClick={async () => {
+                  try {
+                    await dispatch(paySalary({ employeeId: String(row.id), month })).unwrap();
+                    toast.success(`Salary released for ${row.name}`);
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to release salary");
+                  }
                 }}
               >
                 <CreditCard className="mr-2 h-4 w-4" />

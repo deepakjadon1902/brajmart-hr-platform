@@ -50,24 +50,28 @@ export default function Clients() {
               </DialogHeader>
               <form
                 className="space-y-4"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
                   const name = String(form.get("name") ?? "").trim();
-                  dispatch(
-                    addClient({
-                      name,
-                      owner: String(form.get("owner") ?? "").trim(),
-                      email: String(form.get("email") ?? "").trim(),
-                      domain,
-                      status,
-                      addedBy: user?.name ?? "HR",
-                      monthlyValue: Number(form.get("monthlyValue") || 0),
-                    }),
-                  );
-                  toast.success(`${name} added`);
-                  setOpen(false);
-                  event.currentTarget.reset();
+                  try {
+                    await dispatch(
+                      addClient({
+                        name,
+                        owner: String(form.get("owner") ?? "").trim(),
+                        email: String(form.get("email") ?? "").trim(),
+                        domain,
+                        status,
+                        addedBy: user?.name,
+                        monthlyValue: Number(form.get("monthlyValue") || 0),
+                      }),
+                    ).unwrap();
+                    toast.success(`${name} added`);
+                    setOpen(false);
+                    event.currentTarget.reset();
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to add client");
+                  }
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-2">

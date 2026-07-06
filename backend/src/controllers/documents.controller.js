@@ -2,7 +2,7 @@ import multer from "multer";
 import { z } from "zod";
 import { EmployeeDocument } from "../models/EmployeeDocument.js";
 import { User } from "../models/User.js";
-import { ALLOWED_UPLOAD_TYPES, formatBytes, optimizeUpload } from "../services/file-optimizer.service.js";
+import { formatBytes, optimizeUpload } from "../services/file-optimizer.service.js";
 import { getImageKitAuth, uploadBuffer } from "../services/imagekit.service.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -17,13 +17,6 @@ export const uploadMiddleware = multer({
     fields: 8,
     fieldNameSize: 80,
     fieldSize: 10 * 1024,
-  },
-  fileFilter(_req, file, cb) {
-    cb(
-      ALLOWED_UPLOAD_TYPES.has(file.mimetype)
-        ? null
-        : new AppError("Unsupported file type. Upload PDF, DOC, DOCX, JPG, PNG, or WEBP.", 400),
-    );
   },
 }).single("file");
 

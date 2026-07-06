@@ -35,6 +35,16 @@ export const loginThunk = createAsyncThunk(
   },
 );
 
+export const googleLoginThunk = createAsyncThunk(
+  "auth/googleLogin",
+  async (p: { role: Role; credential: string }) => {
+    const res = await authService.googleLogin(p.role, p.credential);
+    localStorage.setItem("auth_token", res.token);
+    localStorage.setItem("auth_user", JSON.stringify(res.user));
+    return res;
+  },
+);
+
 const slice = createSlice({
   name: "auth",
   initialState,
@@ -63,6 +73,19 @@ const slice = createSlice({
         s.token = a.payload.token;
       })
       .addCase(loginThunk.rejected, (s, a) => {
+        s.status = "error";
+        s.error = a.error.message;
+      })
+      .addCase(googleLoginThunk.pending, (s) => {
+        s.status = "loading";
+        s.error = undefined;
+      })
+      .addCase(googleLoginThunk.fulfilled, (s, a) => {
+        s.status = "idle";
+        s.user = a.payload.user;
+        s.token = a.payload.token;
+      })
+      .addCase(googleLoginThunk.rejected, (s, a) => {
         s.status = "error";
         s.error = a.error.message;
       });

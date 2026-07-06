@@ -5,6 +5,7 @@ import { documentsRoutes } from "./documents.routes.js";
 import { emailRoutes } from "./email.routes.js";
 import { messagesRoutes } from "./messages.routes.js";
 import { usersRoutes } from "./users.routes.js";
+import { workspaceRoutes } from "./workspace.routes.js";
 
 export const apiRoutes = Router();
 
@@ -14,3 +15,4 @@ apiRoutes.use("/users", usersRoutes);
 apiRoutes.use("/documents", documentsRoutes);
 apiRoutes.use("/messages", messagesRoutes);
 apiRoutes.use("/email", emailRoutes);
+apiRoutes.use("/workspace", workspaceRoutes);

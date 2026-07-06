@@ -2,11 +2,11 @@ import { createServer } from "node:http";
 import { env } from "./config/env.js";
 import { connectDatabase } from "./config/db.js";
 import { createApp } from "./app.js";
-import { seedDemoUsers } from "./services/bootstrap.service.js";
+import { ensurePermanentAccounts } from "./services/bootstrap.service.js";
 
 async function start() {
   await connectDatabase();
-  await seedDemoUsers();
+  await ensurePermanentAccounts();
 
   const app = createApp();
   const server = createServer(app);

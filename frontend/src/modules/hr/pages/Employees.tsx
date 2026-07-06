@@ -8,7 +8,7 @@ import { Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { addEmployee, updateDocumentStatus } from "@/store/slices/workspaceSlice";
+import { createEmployee, updateDocumentStatus, updateEmployee } from "@/store/slices/workspaceSlice";
 import {
   Dialog,
   DialogContent,
@@ -43,34 +43,39 @@ export default function Employees() {
               </DialogHeader>
               <form
                 className="space-y-4"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  const form = new FormData(event.currentTarget);
+                  const formElement = event.currentTarget;
+                  const form = new FormData(formElement);
                   const name = String(form.get("name") ?? "").trim();
                   const email = String(form.get("email") ?? "").trim();
                   const department = String(form.get("department") ?? "").trim();
                   const designation = String(form.get("designation") ?? "").trim();
                   const monthlyCtc = Number(form.get("monthlyCtc") || 0);
 
-                  dispatch(
-                    addEmployee({
-                      name,
-                      email,
-                      password: String(form.get("password") ?? "").trim(),
-                      department,
-                      designation,
-                      location: String(form.get("location") ?? "").trim(),
-                      manager: String(form.get("manager") ?? "").trim(),
-                      salary: monthlyCtc,
-                      baseSalary: Number(form.get("baseSalary") || 0),
-                      monthlyCtc,
-                      annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
-                      bankAccount: String(form.get("bankAccount") ?? "").trim(),
-                    }),
-                  );
-                  toast.success(`${name} added`);
-                  setOpen(false);
-                  event.currentTarget.reset();
+                  try {
+                    await dispatch(
+                      createEmployee({
+                        name,
+                        email,
+                        password: String(form.get("password") ?? "").trim(),
+                        department,
+                        designation,
+                        location: String(form.get("location") ?? "").trim(),
+                        manager: String(form.get("manager") ?? "").trim(),
+                        salary: monthlyCtc,
+                        baseSalary: Number(form.get("baseSalary") || 0),
+                        monthlyCtc,
+                        annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
+                        bankAccount: String(form.get("bankAccount") ?? "").trim(),
+                      }),
+                    ).unwrap();
+                    toast.success(`${name} added`);
+                    setOpen(false);
+                    formElement.reset();
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to add employee");
+                  }
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -89,7 +94,6 @@ export default function Employees() {
                       name="password"
                       type="password"
                       className="mt-1"
-                      defaultValue="Welcome@123"
                       required
                     />
                   </div>
@@ -107,12 +111,11 @@ export default function Employees() {
                       id="location"
                       name="location"
                       className="mt-1"
-                      defaultValue="Bengaluru"
                     />
                   </div>
                   <div>
                     <Label htmlFor="manager">Manager</Label>
-                    <Input id="manager" name="manager" className="mt-1" defaultValue="Rohan Das" />
+                    <Input id="manager" name="manager" className="mt-1" />
                   </div>
                   <div>
                     <Label htmlFor="baseSalary">Base salary</Label>
@@ -121,7 +124,6 @@ export default function Employees() {
                       name="baseSalary"
                       type="number"
                       className="mt-1"
-                      defaultValue={50000}
                     />
                   </div>
                   <div>
@@ -131,7 +133,6 @@ export default function Employees() {
                       name="monthlyCtc"
                       type="number"
                       className="mt-1"
-                      defaultValue={60000}
                     />
                   </div>
                   <div>
@@ -141,7 +142,6 @@ export default function Employees() {
                       name="annualCtc"
                       type="number"
                       className="mt-1"
-                      defaultValue={720000}
                     />
                   </div>
                   <div>
@@ -188,6 +188,42 @@ export default function Employees() {
           { key: "location", header: "Location" },
           { key: "joinDate", header: "Joined" },
           { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
+          {
+            key: "id",
+            header: "Access",
+            render: (employee) => (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={employee.status === "inactive" ? "default" : "outline"}
+                  onClick={async () => {
+                    try {
+                      await dispatch(updateEmployee({ id: employee.id, status: "active" })).unwrap();
+                      toast.success(`${employee.name} can access the portal`);
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to update access");
+                    }
+                  }}
+                >
+                  Allow
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await dispatch(updateEmployee({ id: employee.id, status: "inactive" })).unwrap();
+                      toast.success(`${employee.name} is blocked from login`);
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to update access");
+                    }
+                  }}
+                >
+                  Block
+                </Button>
+              </div>
+            ),
+          },
         ]}
       />
       <DataTable

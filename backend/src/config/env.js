@@ -22,9 +22,21 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 chars"),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
-  CLIENT_URL: z.string().url().default("http://localhost:8080"),
+  CLIENT_URL: z
+    .string()
+    .default("http://localhost:8080")
+    .refine(
+      (value) =>
+        value
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+          .every((origin) => z.string().url().safeParse(origin).success),
+      "CLIENT_URL must be one or more comma-separated URLs",
+    ),
   COOKIE_DOMAIN: z.string().optional().default(""),
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM: z.string().email().or(z.string().includes("<")).default("BrajMart HR <no-reply@brajmart.com>"),
   IMAGEKIT_PUBLIC_KEY: z.string().optional().default(""),

@@ -10,42 +10,42 @@ const portals = [
     title: "Employee",
     desc: "Attendance, leaves, payslips & more.",
     icon: UserCircle2,
-    accent: "from-indigo-500 to-violet-500",
+    accent: "from-blue-600 to-slate-900",
   },
   {
     to: "/hr/login",
     title: "HR",
     desc: "Recruit, manage and grow your people.",
     icon: Users,
-    accent: "from-emerald-500 to-teal-500",
+    accent: "from-emerald-500 to-blue-600",
   },
   {
     to: "/team-manager/login",
     title: "Team Manager",
     desc: "Lead your team with clarity & insight.",
     icon: Briefcase,
-    accent: "from-sky-500 to-cyan-500",
+    accent: "from-sky-500 to-blue-700",
   },
   {
     to: "/super-admin/login",
     title: "Super Admin",
     desc: "Govern BrajMart roles, access and audit logs.",
     icon: ShieldCheck,
-    accent: "from-rose-500 to-fuchsia-500",
+    accent: "from-slate-900 to-blue-600",
   },
   {
     to: "/digital-marketing/login",
     title: "Digital Marketing",
     desc: "Manage clients, domains and invoices.",
     icon: Megaphone,
-    accent: "from-amber-500 to-rose-500",
+    accent: "from-amber-400 to-blue-600",
   },
 ];
 
 export default function Landing() {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-background">
-      <div className="absolute inset-0 -z-10 gradient-mesh" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[linear-gradient(180deg,#ffffff_0%,#f3f6fb_64%,#ffffff_100%)]" />
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
           <BrandLogo className="h-12 w-36" />
@@ -64,13 +64,13 @@ export default function Landing() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <span className="inline-flex items-center rounded-full border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+          <span className="inline-flex items-center rounded-full border border-black/5 bg-white/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft backdrop-blur">
             Internal HRMS for {BRAND.companyName}
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold tracking-tight md:text-6xl">
             {BRAND.companyName}
             <br />
-            <span className="bg-gradient-to-r from-primary via-fuchsia-500 to-emerald-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-slate-950 via-primary to-emerald-600 bg-clip-text text-transparent">
               people operations.
             </span>
           </h1>
@@ -94,10 +94,10 @@ export default function Landing() {
           >
             <Link
               to={p.to}
-              className="group relative block overflow-hidden rounded-3xl border bg-card p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-elevated"
+              className="group relative block overflow-hidden rounded-2xl border border-black/5 bg-card p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-elevated"
             >
               <div
-                className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-glow ${p.accent}`}
+                className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-glow ${p.accent}`}
               >
                 <p.icon className="h-6 w-6" />
               </div>
@@ -112,7 +112,7 @@ export default function Landing() {
         ))}
       </section>
 
-      <footer className="border-t bg-card/30 py-6 text-center text-xs text-muted-foreground">
+      <footer className="border-t border-black/5 bg-white py-6 text-center text-xs text-muted-foreground">
         {new Date().getFullYear()} {BRAND.companyName}. Crafted with care.
       </footer>
     </div>

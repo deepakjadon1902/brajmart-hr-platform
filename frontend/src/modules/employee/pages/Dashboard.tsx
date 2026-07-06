@@ -14,12 +14,12 @@ import { markAttendance } from "@/store/slices/workspaceSlice";
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
   const dispatch = useAppDispatch();
-  const { attendance, employees, holidays, leaves, notifications } = useAppSelector(
+  const { attendance, employees, holidays, leaves, notifications, payslips } = useAppSelector(
     (s) => s.workspace,
   );
   const [time, setTime] = useState(new Date());
   const [loc, setLoc] = useState<string>("Detecting...");
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeeAttendance = attendance.filter(
     (record) => record.employeeId === currentEmployee?.id,
   );
@@ -32,6 +32,7 @@ export default function Dashboard() {
     employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0),
   );
   const approvedLeaves = employeeLeaves.filter((leave) => leave.status === "approved").length;
+  const latestPayslip = payslips.find((payslip) => payslip.employeeId === currentEmployee?.id);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -83,15 +84,15 @@ export default function Dashboard() {
         />
         <StatCard
           label="Net salary"
-          value="Rs 82.5k"
-          delta="May 2026"
+          value={latestPayslip ? `Rs ${latestPayslip.net.toLocaleString()}` : "Rs 0"}
+          delta={latestPayslip?.month ?? "No salary released"}
           icon={<Wallet className="h-5 w-5" />}
           tone="success"
         />
         <StatCard
           label="Tasks open"
-          value="6"
-          delta="2 due today"
+          value="0"
+          delta="No assigned tasks"
           icon={<Activity className="h-5 w-5" />}
           tone="warning"
         />

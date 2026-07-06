@@ -24,7 +24,13 @@ export const createUserSchema = z.object({
     department: z.string().trim().max(100).optional(),
     designation: z.string().trim().max(100).optional(),
     phone: z.string().trim().max(32).optional(),
+    location: z.string().trim().max(120).optional(),
+    manager: z.string().trim().max(120).optional(),
     salary: z.number().optional(),
+    baseSalary: z.number().optional(),
+    monthlyCtc: z.number().optional(),
+    annualCtc: z.number().optional(),
+    bankAccount: z.string().trim().max(80).optional(),
   }),
 });
 
@@ -36,6 +42,13 @@ export const updateUserSchema = z.object({
     department: z.string().trim().max(100).optional(),
     designation: z.string().trim().max(100).optional(),
     phone: z.string().trim().max(32).optional(),
+    location: z.string().trim().max(120).optional(),
+    manager: z.string().trim().max(120).optional(),
+    salary: z.number().optional(),
+    baseSalary: z.number().optional(),
+    monthlyCtc: z.number().optional(),
+    annualCtc: z.number().optional(),
+    bankAccount: z.string().trim().max(80).optional(),
     avatar: z.string().url().optional(),
     status: z.enum(["active", "inactive", "on-leave"]).optional(),
   }),
@@ -108,6 +121,11 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (isSelf && !canManageUsers) {
     delete req.validated.body.role;
     delete req.validated.body.status;
+    delete req.validated.body.salary;
+    delete req.validated.body.baseSalary;
+    delete req.validated.body.monthlyCtc;
+    delete req.validated.body.annualCtc;
+    delete req.validated.body.bankAccount;
   }
 
   const user = await User.findOneAndUpdate(

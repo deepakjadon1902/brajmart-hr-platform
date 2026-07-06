@@ -8,9 +8,9 @@ import App from "@/App";
 import "@/i18n";
 import "@/styles.css";
 
-// Apply persisted theme before render to avoid flash.
-const mode = localStorage.getItem("theme") === "dark" ? "dark" : "light";
-document.documentElement.classList.toggle("dark", mode === "dark");
+// Force the portal into day mode before render.
+localStorage.setItem("theme", "light");
+document.documentElement.classList.remove("dark");
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },

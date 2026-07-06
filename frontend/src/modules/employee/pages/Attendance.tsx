@@ -16,7 +16,7 @@ export default function Attendance() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { attendance, employees } = useAppSelector((s) => s.workspace);
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeeAttendance = attendance.filter(
     (record) => record.employeeId === currentEmployee?.id,
   );
@@ -72,11 +72,11 @@ export default function Attendance() {
             )}
           </Button>
         </Card>
-        <StatCard label="Today" value="07h 24m" icon={<Clock className="h-5 w-5" />} />
+        <StatCard label="Today" value={`${todayRecord?.hoursWorked ?? 0}h`} icon={<Clock className="h-5 w-5" />} />
         <StatCard
           label="This month"
-          value="158h"
-          delta="22 working days"
+          value={`${employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0)}h`}
+          delta={`${employeeAttendance.length} records`}
           icon={<Activity className="h-5 w-5" />}
           tone="success"
         />
@@ -97,3 +97,4 @@ export default function Attendance() {
     </div>
   );
 }
+

@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import mongoose from "mongoose";
 
 export const ROLES = ["employee", "hr", "team-manager", "super-admin", "digital-marketing"];
@@ -21,6 +22,13 @@ const userSchema = new mongoose.Schema(
     department: { type: String, trim: true, maxlength: 100 },
     designation: { type: String, trim: true, maxlength: 100 },
     phone: { type: String, trim: true, maxlength: 32 },
+    location: { type: String, trim: true, maxlength: 120 },
+    manager: { type: String, trim: true, maxlength: 120 },
+    salary: { type: Number, min: 0, default: 0 },
+    baseSalary: { type: Number, min: 0, default: 0 },
+    monthlyCtc: { type: Number, min: 0, default: 0 },
+    annualCtc: { type: Number, min: 0, default: 0 },
+    bankAccount: { type: String, trim: true, maxlength: 80 },
     avatar: { type: String, trim: true },
     googleId: { type: String, sparse: true, index: true },
     status: { type: String, enum: ["active", "inactive", "on-leave"], default: "active" },
@@ -47,7 +55,7 @@ userSchema.set("toJSON", {
 });
 
 userSchema.methods.setPassword = async function setPassword(password) {
-  this.passwordHash = await bcrypt.hash(password, 12);
+  this.passwordHash = await bcrypt.hash(password, 10);
 };
 
 userSchema.methods.verifyPassword = async function verifyPassword(password) {
@@ -56,12 +64,12 @@ userSchema.methods.verifyPassword = async function verifyPassword(password) {
 };
 
 userSchema.methods.setRefreshToken = async function setRefreshToken(refreshToken) {
-  this.refreshTokenHash = await bcrypt.hash(refreshToken, 12);
+  this.refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 };
 
 userSchema.methods.verifyRefreshToken = async function verifyRefreshToken(refreshToken) {
   if (!this.refreshTokenHash) return false;
-  return bcrypt.compare(refreshToken, this.refreshTokenHash);
+  return crypto.createHash("sha256").update(refreshToken).digest("hex") === this.refreshTokenHash;
 };
 
 export const User = mongoose.model("User", userSchema);

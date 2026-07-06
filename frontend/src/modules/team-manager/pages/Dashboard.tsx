@@ -1,19 +1,11 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
-import { Users, CalendarCheck, ClipboardList, Award } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { Award, CalendarCheck, ClipboardList, Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAppSelector } from "@/store";
 
-const data = [
-  { d: "Mon", v: 8 },
-  { d: "Tue", v: 9 },
-  { d: "Wed", v: 7 },
-  { d: "Thu", v: 9 },
-  { d: "Fri", v: 8 },
-];
 export default function D() {
   const { employees, attendance } = useAppSelector((s) => s.workspace);
   const today = new Date().toISOString().slice(0, 10);
@@ -38,34 +30,15 @@ export default function D() {
         />
         <StatCard
           label="Open tasks"
-          value="18"
+          value="0"
           tone="warning"
           icon={<ClipboardList className="h-5 w-5" />}
         />
-        <StatCard label="Avg rating" value="4.4" tone="info" icon={<Award className="h-5 w-5" />} />
+        <StatCard label="Avg rating" value="-" tone="info" icon={<Award className="h-5 w-5" />} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-6 shadow-soft lg:col-span-2">
-          <h3 className="font-semibold">Team hours this week</h3>
-          <div className="mt-4 h-64">
-            <ResponsiveContainer>
-              <BarChart data={data}>
-                <XAxis dataKey="d" stroke="var(--color-muted-foreground)" fontSize={11} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Bar dataKey="v" fill="var(--color-primary)" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="p-6 shadow-soft">
-          <h3 className="font-semibold">My team</h3>
+      <Card className="p-6 shadow-soft">
+        <h3 className="font-semibold">My team</h3>
+        {employees.length ? (
           <ul className="mt-4 space-y-3">
             {employees.slice(0, 6).map((e) => (
               <li key={e.id} className="flex items-center gap-3">
@@ -86,8 +59,12 @@ export default function D() {
               </li>
             ))}
           </ul>
-        </Card>
-      </div>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No employee records found in the database.
+          </p>
+        )}
+      </Card>
     </div>
   );
 }

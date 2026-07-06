@@ -1,29 +1,10 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
-import { Users, UserCheck, UserMinus, Briefcase, TrendingUp } from "lucide-react";
+import { Users, UserCheck, UserMinus, Briefcase } from "lucide-react";
 import { useAppSelector } from "@/store";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts";
+import { ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
-const hiring = [
-  { m: "Jan", v: 4 },
-  { m: "Feb", v: 8 },
-  { m: "Mar", v: 6 },
-  { m: "Apr", v: 12 },
-  { m: "May", v: 9 },
-  { m: "Jun", v: 14 },
-];
 const COLORS = [
   "var(--color-chart-1)",
   "var(--color-chart-2)",
@@ -73,42 +54,17 @@ export default function Dashboard() {
         />
         <StatCard
           label="Open roles"
-          value="9"
-          delta="3 closing soon"
+          value="0"
+          delta="No recruitment records"
           icon={<Briefcase className="h-5 w-5" />}
           tone="info"
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-6 lg:col-span-2 shadow-soft">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Hiring trend</h3>
-            <span className="flex items-center gap-1 text-sm text-success">
-              <TrendingUp className="h-4 w-4" />
-              +22%
-            </span>
-          </div>
-          <div className="mt-4 h-64">
-            <ResponsiveContainer>
-              <BarChart data={hiring}>
-                <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={11} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Bar dataKey="v" fill="var(--color-primary)" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="p-6 shadow-soft">
-          <h3 className="font-semibold">Department split</h3>
-          <div className="mt-4 h-64">
+      <Card className="p-6 shadow-soft">
+        <h3 className="font-semibold">Department split</h3>
+        <div className="mt-4 h-64">
+          {dept.length ? (
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -126,9 +82,13 @@ export default function Dashboard() {
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No employee records found in the database.
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

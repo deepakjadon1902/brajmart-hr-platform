@@ -10,9 +10,9 @@ import { useAppSelector } from "@/store";
 export default function Payslips() {
   const user = useAppSelector((s) => s.auth.user);
   const { payslips, employees } = useAppSelector((s) => s.workspace);
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeePayslips = payslips.filter(
-    (payslip) => !payslip.employeeId || payslip.employeeId === currentEmployee?.id,
+    (payslip) => payslip.employeeId === currentEmployee?.id,
   );
 
   return (

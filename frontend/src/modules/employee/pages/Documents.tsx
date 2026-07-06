@@ -13,7 +13,7 @@ export default function Documents() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { documents, employees } = useAppSelector((s) => s.workspace);
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const docs = documents.filter((doc) => doc.employeeId === currentEmployee?.id);
 
   return (
@@ -23,22 +23,31 @@ export default function Documents() {
         <Card className="p-5 shadow-soft lg:col-span-1">
           <form
             className="space-y-4"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
               if (!currentEmployee) return;
               const form = new FormData(event.currentTarget);
               const file = form.get("file") as File | null;
-              dispatch(
-                addDocument({
-                  employeeId: currentEmployee.id,
-                  employeeName: currentEmployee.name,
-                  name: file?.name || String(form.get("name") ?? "Document"),
-                  type: String(form.get("type") ?? "Job document"),
-                  size: file?.size ? `${Math.ceil(file.size / 1024)} KB` : "Manual entry",
-                }),
-              );
-              toast.success("Document uploaded for HR review");
-              event.currentTarget.reset();
+              if (!file || file.size === 0) {
+                toast.error("Please choose a real document file.");
+                return;
+              }
+              try {
+                await dispatch(
+                  addDocument({
+                    employeeId: currentEmployee.id,
+                    employeeName: currentEmployee.name,
+                    name: file.name || String(form.get("name") ?? "Document"),
+                    type: String(form.get("type") ?? "Job document"),
+                    size: `${Math.ceil(file.size / 1024)} KB`,
+                    file,
+                  }),
+                ).unwrap();
+                toast.success("Document uploaded for HR review");
+                event.currentTarget.reset();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Document upload failed");
+              }
             }}
           >
             <div>

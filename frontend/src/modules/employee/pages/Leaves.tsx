@@ -33,7 +33,7 @@ export default function Leaves() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { leaves, employees } = useAppSelector((s) => s.workspace);
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeeLeaves = leaves.filter((leave) => leave.employeeId === currentEmployee?.id);
 
   return (
@@ -55,23 +55,27 @@ export default function Leaves() {
               </DialogHeader>
               <form
                 className="space-y-4"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (!currentEmployee) return;
                   const form = new FormData(e.currentTarget);
-                  dispatch(
-                    applyLeave({
-                      employeeId: currentEmployee.id,
-                      employeeName: currentEmployee.name,
-                      type: leaveType,
-                      from: String(form.get("from")),
-                      to: String(form.get("to")),
-                      reason: String(form.get("reason")),
-                    }),
-                  );
-                  toast.success("Leave request submitted");
-                  setOpen(false);
-                  e.currentTarget.reset();
+                  try {
+                    await dispatch(
+                      applyLeave({
+                        employeeId: currentEmployee.id,
+                        employeeName: currentEmployee.name,
+                        type: leaveType,
+                        from: String(form.get("from")),
+                        to: String(form.get("to")),
+                        reason: String(form.get("reason")),
+                      }),
+                    ).unwrap();
+                    toast.success("Leave request submitted");
+                    setOpen(false);
+                    e.currentTarget.reset();
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to submit leave");
+                  }
                 }}
               >
                 <div>

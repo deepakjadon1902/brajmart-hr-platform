@@ -4,6 +4,7 @@ import { NAV, ROLE_META } from "@/constants/nav";
 import { useAppSelector } from "@/store";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
+import { BrandLogo } from "@/components/common/BrandLogo";
 
 export function Sidebar({ role, collapsed }: { role: Role; collapsed: boolean }) {
   const items = NAV[role];
@@ -13,19 +14,12 @@ export function Sidebar({ role, collapsed }: { role: Role; collapsed: boolean })
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-dvh shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] md:flex md:flex-col",
+        "sticky top-0 hidden h-dvh shrink-0 border-r border-black/5 bg-white text-sidebar-foreground shadow-[8px_0_30px_rgba(15,23,42,0.03)] transition-[width] md:flex md:flex-col",
         collapsed ? "w-[76px]" : "w-64",
       )}
     >
-      <div className="flex h-16 items-center gap-3 border-b px-4">
-        <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-glow",
-            meta.accent,
-          )}
-        >
-          <span className="text-sm font-bold">{branding.companyName.slice(0, 1)}</span>
-        </div>
+      <div className="flex h-16 items-center gap-3 border-b border-black/5 px-4">
+        <BrandLogo compact className="h-10 w-10 rounded-full p-1" />
         {!collapsed && (
           <div className="min-w-0">
             <div className="truncate text-sm font-bold">{branding.companyName}</div>
@@ -44,7 +38,7 @@ export function Sidebar({ role, collapsed }: { role: Role; collapsed: boolean })
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-soft",
                   )
@@ -70,7 +64,7 @@ export function Sidebar({ role, collapsed }: { role: Role; collapsed: boolean })
 
       {!collapsed && (
         <div className="border-t p-3">
-          <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/0 p-3 text-xs">
+          <div className="rounded-xl border border-black/5 bg-muted/70 p-3 text-xs">
             <p className="font-semibold">Need help?</p>
             <p className="mt-1 text-muted-foreground">Reach out to support 24/7.</p>
           </div>

@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { toggleTheme, setLanguage, setBranding } from "@/store/slices/themeSlice";
+import { setLanguage, setBranding } from "@/store/slices/themeSlice";
 import type { Language } from "@/store/slices/themeSlice";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -21,22 +20,13 @@ export default function Settings() {
   const dispatch = useAppDispatch();
   const theme = useAppSelector((s) => s.theme);
   const { i18n } = useTranslation();
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" subtitle="Preferences, theme and branding." />
+      <PageHeader title="Settings" subtitle="Preferences, language and branding." />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 shadow-soft">
+        <Card className="p-6">
           <h3 className="font-semibold">Appearance</h3>
-          <div className="mt-4 flex items-center justify-between">
-            <div>
-              <Label>Dark mode</Label>
-              <p className="text-xs text-muted-foreground">Reduces glare in low light.</p>
-            </div>
-            <Switch
-              checked={theme.mode === "dark"}
-              onCheckedChange={() => dispatch(toggleTheme())}
-            />
-          </div>
           <div className="mt-4">
             <Label>Language</Label>
             <Select
@@ -51,12 +41,13 @@ export default function Settings() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
-                <SelectItem value="hi">हिन्दी</SelectItem>
+                <SelectItem value="hi">Hindi</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </Card>
-        <Card className="p-6 shadow-soft">
+
+        <Card className="p-6">
           <h3 className="font-semibold">Branding</h3>
           <form
             className="mt-4 space-y-3"

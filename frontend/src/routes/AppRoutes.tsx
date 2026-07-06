@@ -100,7 +100,7 @@ export function AppRoutes() {
         <Route
           path="/employee"
           element={
-            <ProtectedRoute allow="employee">
+            <ProtectedRoute allow={["employee", "hr", "super-admin"]}>
               <PortalLayout role="employee" />
             </ProtectedRoute>
           }
@@ -126,7 +126,7 @@ export function AppRoutes() {
         <Route
           path="/hr"
           element={
-            <ProtectedRoute allow="hr">
+            <ProtectedRoute allow={["hr", "super-admin"]}>
               <PortalLayout role="hr" />
             </ProtectedRoute>
           }
@@ -156,7 +156,7 @@ export function AppRoutes() {
         <Route
           path="/team-manager"
           element={
-            <ProtectedRoute allow="team-manager">
+            <ProtectedRoute allow={["team-manager", "hr", "super-admin"]}>
               <PortalLayout role="team-manager" />
             </ProtectedRoute>
           }
@@ -198,7 +198,7 @@ export function AppRoutes() {
         <Route
           path="/digital-marketing"
           element={
-            <ProtectedRoute allow={["digital-marketing", "super-admin"]}>
+            <ProtectedRoute allow={["digital-marketing", "hr", "super-admin"]}>
               <PortalLayout role="digital-marketing" />
             </ProtectedRoute>
           }

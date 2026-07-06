@@ -23,7 +23,7 @@ export function StatCard({ label, value, delta, icon, tone = "default" }: Props)
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border bg-card p-5 shadow-soft"
+      className="relative overflow-hidden rounded-2xl border border-black/5 bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
     >
       <div
         className={cn(
@@ -36,7 +36,7 @@ export function StatCard({ label, value, delta, icon, tone = "default" }: Props)
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {label}
           </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">{value}</p>
           {delta && <p className="mt-1 text-xs text-muted-foreground">{delta}</p>}
         </div>
         {icon && (

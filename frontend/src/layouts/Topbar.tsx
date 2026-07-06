@@ -1,7 +1,7 @@
-import { Bell, Menu, Moon, Search, Sun, LogOut, Globe } from "lucide-react";
+import { Bell, Globe, LogOut, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar } from "@/store/slices/uiSlice";
-import { toggleTheme, setLanguage } from "@/store/slices/themeSlice";
+import { setLanguage } from "@/store/slices/themeSlice";
 import { logout } from "@/store/slices/authSlice";
 import { setActive } from "@/store/slices/companySlice";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { BrandLogo } from "@/components/common/BrandLogo";
 
 export function Topbar() {
   const dispatch = useAppDispatch();
@@ -39,7 +40,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-black/5 bg-white/90 px-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur-xl">
       <Button
         variant="ghost"
         size="icon"
@@ -50,15 +51,20 @@ export function Topbar() {
         <Menu className="h-5 w-5" />
       </Button>
 
-      <div className="relative hidden flex-1 max-w-md lg:block">
+      <BrandLogo compact className="h-9 w-9 rounded-full p-1 md:hidden" />
+
+      <div className="relative hidden max-w-md flex-1 lg:block">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="bg-card pl-9" placeholder="Search employees, leaves, assets..." />
+        <Input
+          className="border-black/5 bg-muted/70 pl-9 shadow-none"
+          placeholder="Search employees, leaves, assets..."
+        />
       </div>
 
       <div className="ml-auto flex items-center gap-2">
         {user?.role === "super-admin" && (
           <Select value={company.activeId} onValueChange={(v) => dispatch(setActive(v))}>
-            <SelectTrigger className="hidden h-9 w-48 bg-card md:flex">
+            <SelectTrigger className="hidden h-9 w-48 border-black/5 bg-muted/70 shadow-none md:flex">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -86,20 +92,11 @@ export function Topbar() {
                   i18n.changeLanguage(l);
                 }}
               >
-                {l === "en" ? "English" : "हिन्दी"} {theme.language === l && "✓"}
+                {l === "en" ? "English" : "Hindi"} {theme.language === l && "Selected"}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => dispatch(toggleTheme())}
-          aria-label="Toggle theme"
-        >
-          {theme.mode === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
 
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
@@ -108,9 +105,10 @@ export function Topbar() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-full pl-1 pr-3 transition-colors hover:bg-muted">
+            <button className="flex items-center gap-2 rounded-full border border-black/5 bg-white py-1 pl-1 pr-3 shadow-soft transition-colors hover:bg-muted">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                <AvatarFallback className="bg-primary text-xs text-primary-foreground">
                   {user?.name
                     ?.split(" ")
                     .map((n) => n[0])
@@ -119,7 +117,7 @@ export function Topbar() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left text-xs leading-tight sm:block">
-                <div className="font-medium">{user?.name}</div>
+                <div className="font-semibold">{user?.name}</div>
                 <div className="text-muted-foreground">{user?.designation}</div>
               </div>
             </button>

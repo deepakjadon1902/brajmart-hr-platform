@@ -2,22 +2,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 
-const rows = [
-  {
-    id: "x1",
-    name: "Ravi Kumar",
-    date: "2025-06-30",
-    checklist: "pending",
-    clearance: "in-repair",
-  },
-  {
-    id: "x2",
-    name: "Maya Pillai",
-    date: "2025-07-12",
-    checklist: "approved",
-    clearance: "assigned",
-  },
-];
+const rows: {
+  id: string;
+  name: string;
+  date: string;
+  checklist: string;
+  clearance: string;
+}[] = [];
 
 export default function Exit() {
   return (
@@ -25,6 +16,7 @@ export default function Exit() {
       <PageHeader title="Exit Management" subtitle="Review resignations and clearances." />
       <DataTable
         data={rows}
+        emptyMessage="No exit records found in the database"
         searchKeys={["name"]}
         columns={[
           { key: "name", header: "Employee" },

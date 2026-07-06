@@ -10,14 +10,6 @@ export const store = configureStore({
   reducer: { auth, theme, company, ui, workspace },
 });
 
-store.subscribe(() => {
-  try {
-    localStorage.setItem("workspace_state", JSON.stringify(store.getState().workspace));
-  } catch {
-    // Storage can be unavailable in private windows; the app still works in memory.
-  }
-});
-
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 export const useAppDispatch = () => useDispatch<AppDispatch>();

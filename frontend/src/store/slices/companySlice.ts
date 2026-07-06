@@ -1,11 +1,20 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { companies } from "@/services/mock";
 import type { Company } from "@/types";
 
 interface State {
   list: Company[];
   activeId: string;
 }
+
+const companies: Company[] = [
+  {
+    id: "c1",
+    name: "BrajMart EcomTech LLP",
+    logo: "/logo.jpeg",
+    primaryColor: "#4F46E5",
+  },
+];
+
 const slice = createSlice({
   name: "company",
   initialState: {

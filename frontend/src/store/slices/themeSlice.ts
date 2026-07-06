@@ -15,7 +15,7 @@ interface ThemeState {
 }
 
 const initial: ThemeState = {
-  mode: (localStorage.getItem("theme") as "light" | "dark") || "light",
+  mode: "light",
   language: (localStorage.getItem("lang") as Language) || "en",
   branding: {
     companyName: BRAND.companyName,
@@ -28,10 +28,10 @@ const slice = createSlice({
   name: "theme",
   initialState: initial,
   reducers: {
-    toggleTheme(s) {
-      s.mode = s.mode === "light" ? "dark" : "light";
-      localStorage.setItem("theme", s.mode);
-      document.documentElement.classList.toggle("dark", s.mode === "dark");
+    enforceLightMode(s) {
+      s.mode = "light";
+      localStorage.setItem("theme", "light");
+      document.documentElement.classList.remove("dark");
     },
     setLanguage(s, a: PayloadAction<Language>) {
       s.language = a.payload;
@@ -49,5 +49,5 @@ const slice = createSlice({
   },
 });
 
-export const { toggleTheme, setLanguage, setBranding } = slice.actions;
+export const { enforceLightMode, setLanguage, setBranding } = slice.actions;
 export default slice.reducer;

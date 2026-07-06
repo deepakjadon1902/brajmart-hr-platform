@@ -33,6 +33,7 @@ export default function Invoices() {
     () => clients.find((client) => client.id === clientId) ?? clients[0],
     [clientId, clients],
   );
+  const currentMonth = new Date().toLocaleString("en", { month: "long", year: "numeric" });
 
   const startEdit = (invoice: Invoice) => {
     setEditing(invoice);
@@ -65,29 +66,33 @@ export default function Invoices() {
               </DialogHeader>
               <form
                 className="space-y-4"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
                   if (!selectedClient) return;
                   const form = new FormData(event.currentTarget);
                   const amount = Number(form.get("amount") || 0);
                   const tax = Number(form.get("tax") || Math.round(amount * 0.18));
-                  dispatch(
-                    upsertInvoice({
-                      id: editing?.id,
-                      clientId: selectedClient.id,
-                      clientName: selectedClient.name,
-                      domain: selectedClient.domain,
-                      month: String(form.get("month") ?? ""),
-                      amount,
-                      tax,
-                      status: String(form.get("status")) as Invoice["status"],
-                      template: String(form.get("template") ?? ""),
-                      notes: String(form.get("notes") ?? ""),
-                    }),
-                  );
-                  toast.success(editing ? "Invoice updated" : "Invoice created");
-                  setOpen(false);
-                  setEditing(null);
+                  try {
+                    await dispatch(
+                      upsertInvoice({
+                        id: editing?.id,
+                        clientId: selectedClient.id,
+                        clientName: selectedClient.name,
+                        domain: selectedClient.domain,
+                        month: String(form.get("month") ?? ""),
+                        amount,
+                        tax,
+                        status: String(form.get("status")) as Invoice["status"],
+                        template: String(form.get("template") ?? ""),
+                        notes: String(form.get("notes") ?? ""),
+                      }),
+                    ).unwrap();
+                    toast.success(editing ? "Invoice updated" : "Invoice created");
+                    setOpen(false);
+                    setEditing(null);
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to save invoice");
+                  }
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -108,7 +113,7 @@ export default function Invoices() {
                   </div>
                   <div>
                     <Label>Month</Label>
-                    <Input name="month" className="mt-1" defaultValue={editing?.month ?? "June 2026"} required />
+                    <Input name="month" className="mt-1" defaultValue={editing?.month ?? currentMonth} required />
                   </div>
                   <div>
                     <Label>Status</Label>

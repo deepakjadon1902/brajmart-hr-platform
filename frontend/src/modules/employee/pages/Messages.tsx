@@ -13,7 +13,7 @@ export default function Messages() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { employees, messages } = useAppSelector((s) => s.workspace);
-  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? employees[0];
+  const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeeMessages = messages.filter(
     (message) => message.toId === currentEmployee?.id || message.fromId === currentEmployee?.id,
   );
@@ -80,22 +80,26 @@ export default function Messages() {
           </div>
           <form
             className="flex gap-2 border-t p-3"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
               if (!active || !currentEmployee || !msg.trim()) return;
-              dispatch(
-                sendMessage({
-                  fromId: currentEmployee.id,
-                  fromName: currentEmployee.name,
-                  toId: active.id,
-                  toName: active.name,
-                  subject: "Reply",
-                  body: msg.trim(),
-                  channel: active.channel === "manager" ? "manager" : "employee",
-                }),
-              );
-              toast.success("Reply sent");
-              setMsg("");
+              try {
+                await dispatch(
+                  sendMessage({
+                    fromId: currentEmployee.id,
+                    fromName: currentEmployee.name,
+                    toId: active.id,
+                    toName: active.name,
+                    subject: "Reply",
+                    body: msg.trim(),
+                    channel: active.channel === "manager" ? "manager" : "employee",
+                  }),
+                ).unwrap();
+                toast.success("Reply sent");
+                setMsg("");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Unable to send reply");
+              }
             }}
           >
             <Input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Type a message..." />

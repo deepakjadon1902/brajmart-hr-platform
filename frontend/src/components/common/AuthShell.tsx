@@ -326,22 +326,6 @@ export function AuthShell({ role }: { role: Role }) {
                 {status === "loading" ? "Signing in..." : "Sign in"}
               </Button>
               <div ref={googleButtonRef} className="min-h-10 w-full overflow-hidden rounded-md" />
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={!googleReady || status === "loading"}
-                onClick={() =>
-                  window.google?.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-                      toast.error("Google popup was blocked. Use the Google button above or check the authorized origin.");
-                    }
-                  })
-                }
-              >
-                <GoogleIcon />
-                Open Google prompt
-              </Button>
             </form>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">

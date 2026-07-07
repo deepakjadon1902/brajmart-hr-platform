@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
-import { Users, UserCheck, UserMinus, Briefcase } from "lucide-react";
+import { Users, UserCheck, UserMinus, ClipboardList } from "lucide-react";
 import { useAppSelector } from "@/store";
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
@@ -14,7 +14,7 @@ const COLORS = [
 ];
 
 export default function Dashboard() {
-  const { employees, attendance } = useAppSelector((s) => s.workspace);
+  const { employees, attendance, tasks } = useAppSelector((s) => s.workspace);
   const today = new Date().toISOString().slice(0, 10);
   const presentToday = attendance.filter(
     (record) => record.date === today && record.status === "present",
@@ -53,10 +53,10 @@ export default function Dashboard() {
           tone="warning"
         />
         <StatCard
-          label="Open roles"
-          value="0"
-          delta="No recruitment records"
-          icon={<Briefcase className="h-5 w-5" />}
+          label="Open tasks"
+          value={String(tasks.filter((task) => task.status !== "completed").length)}
+          delta={`${tasks.filter((task) => task.status === "completed").length} completed`}
+          icon={<ClipboardList className="h-5 w-5" />}
           tone="info"
         />
       </div>

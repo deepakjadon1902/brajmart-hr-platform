@@ -1,10 +1,11 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -18,11 +19,139 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Employee } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Employees() {
   const dispatch = useAppDispatch();
+  const user = useAppSelector((s) => s.auth.user);
   const { employees, documents } = useAppSelector((s) => s.workspace);
+  const companies = useAppSelector((s) => s.company.list);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
+
+  const saveEmployeeDetails = async (event: FormEvent<HTMLFormElement>, employee?: Employee) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const name = String(form.get("name") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const department = String(form.get("department") ?? "").trim();
+    const designation = String(form.get("designation") ?? "").trim();
+    const monthlyCtc = Number(form.get("monthlyCtc") || 0);
+    const payload = {
+      name,
+      email,
+      password: String(form.get("password") ?? "").trim(),
+      department,
+      designation,
+      location: String(form.get("location") ?? "").trim(),
+      manager: String(form.get("manager") ?? "").trim(),
+      salary: monthlyCtc,
+      baseSalary: Number(form.get("baseSalary") || 0),
+      monthlyCtc,
+      annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
+      bankAccount: String(form.get("bankAccount") ?? "").trim(),
+      companyId: String(form.get("companyId") ?? "").trim() || undefined,
+    };
+
+    try {
+      if (employee) {
+        await dispatch(updateEmployee({ id: employee.id, ...payload })).unwrap();
+        toast.success(`${name} updated`);
+        setEditing(null);
+      } else {
+        await dispatch(createEmployee(payload)).unwrap();
+        toast.success(`${name} added`);
+        setOpen(false);
+        formElement.reset();
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save employee");
+    }
+  };
+
+  const EmployeeFields = ({ employee }: { employee?: Employee }) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {user?.role === "super-admin" && (
+        <div className="sm:col-span-2">
+          <Label>Company</Label>
+          <Select name="companyId" defaultValue={employee?.companyId || companies[0]?.id || "c1"}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select company" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((company) => (
+                <SelectItem key={company.id} value={company.companyId || company.id}>
+                  {company.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div>
+        <Label htmlFor={employee ? "edit-name" : "name"}>Name</Label>
+        <Input id={employee ? "edit-name" : "name"} name="name" defaultValue={employee?.name} className="mt-1" required />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-email" : "email"}>Email</Label>
+        <Input
+          id={employee ? "edit-email" : "email"}
+          name="email"
+          type="email"
+          defaultValue={employee?.email}
+          className="mt-1"
+          disabled={Boolean(employee)}
+          required
+        />
+      </div>
+      {!employee && (
+        <div>
+          <Label htmlFor="password">Portal password</Label>
+          <Input id="password" name="password" type="password" className="mt-1" required />
+        </div>
+      )}
+      <div>
+        <Label htmlFor={employee ? "edit-department" : "department"}>Department</Label>
+        <Input id={employee ? "edit-department" : "department"} name="department" defaultValue={employee?.department} className="mt-1" required />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-designation" : "designation"}>Designation</Label>
+        <Input id={employee ? "edit-designation" : "designation"} name="designation" defaultValue={employee?.designation} className="mt-1" required />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-location" : "location"}>Location</Label>
+        <Input id={employee ? "edit-location" : "location"} name="location" defaultValue={employee?.location} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-manager" : "manager"}>Manager</Label>
+        <Input id={employee ? "edit-manager" : "manager"} name="manager" defaultValue={employee?.manager} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-baseSalary" : "baseSalary"}>Base salary</Label>
+        <Input id={employee ? "edit-baseSalary" : "baseSalary"} name="baseSalary" type="number" defaultValue={employee?.baseSalary} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-monthlyCtc" : "monthlyCtc"}>Monthly CTC</Label>
+        <Input id={employee ? "edit-monthlyCtc" : "monthlyCtc"} name="monthlyCtc" type="number" defaultValue={employee?.monthlyCtc ?? employee?.salary} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-annualCtc" : "annualCtc"}>Annual CTC</Label>
+        <Input id={employee ? "edit-annualCtc" : "annualCtc"} name="annualCtc" type="number" defaultValue={employee?.annualCtc} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-bankAccount" : "bankAccount"}>Bank account</Label>
+        <Input id={employee ? "edit-bankAccount" : "bankAccount"} name="bankAccount" defaultValue={employee?.bankAccount} className="mt-1" />
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -43,112 +172,9 @@ export default function Employees() {
               </DialogHeader>
               <form
                 className="space-y-4"
-                onSubmit={async (event) => {
-                  event.preventDefault();
-                  const formElement = event.currentTarget;
-                  const form = new FormData(formElement);
-                  const name = String(form.get("name") ?? "").trim();
-                  const email = String(form.get("email") ?? "").trim();
-                  const department = String(form.get("department") ?? "").trim();
-                  const designation = String(form.get("designation") ?? "").trim();
-                  const monthlyCtc = Number(form.get("monthlyCtc") || 0);
-
-                  try {
-                    await dispatch(
-                      createEmployee({
-                        name,
-                        email,
-                        password: String(form.get("password") ?? "").trim(),
-                        department,
-                        designation,
-                        location: String(form.get("location") ?? "").trim(),
-                        manager: String(form.get("manager") ?? "").trim(),
-                        salary: monthlyCtc,
-                        baseSalary: Number(form.get("baseSalary") || 0),
-                        monthlyCtc,
-                        annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
-                        bankAccount: String(form.get("bankAccount") ?? "").trim(),
-                      }),
-                    ).unwrap();
-                    toast.success(`${name} added`);
-                    setOpen(false);
-                    formElement.reset();
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Unable to add employee");
-                  }
-                }}
+                onSubmit={(event) => saveEmployeeDetails(event)}
               >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" name="name" className="mt-1" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" className="mt-1" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Portal password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="department">Department</Label>
-                    <Input id="department" name="department" className="mt-1" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="designation">Designation</Label>
-                    <Input id="designation" name="designation" className="mt-1" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      name="location"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="manager">Manager</Label>
-                    <Input id="manager" name="manager" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="baseSalary">Base salary</Label>
-                    <Input
-                      id="baseSalary"
-                      name="baseSalary"
-                      type="number"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="monthlyCtc">Monthly CTC</Label>
-                    <Input
-                      id="monthlyCtc"
-                      name="monthlyCtc"
-                      type="number"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="annualCtc">Annual CTC</Label>
-                    <Input
-                      id="annualCtc"
-                      name="annualCtc"
-                      type="number"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="bankAccount">Bank account</Label>
-                    <Input id="bankAccount" name="bankAccount" className="mt-1" />
-                  </div>
-                </div>
+                <EmployeeFields />
                 <Button type="submit" className="w-full">
                   Save employee
                 </Button>
@@ -157,6 +183,21 @@ export default function Employees() {
           </Dialog>
         }
       />
+      <Dialog open={Boolean(editing)} onOpenChange={(value) => !value && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit employee</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <form className="space-y-4" onSubmit={(event) => saveEmployeeDetails(event, editing)}>
+              <EmployeeFields employee={editing} />
+              <Button type="submit" className="w-full">
+                Save details
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
       <DataTable
         data={employees}
         searchKeys={["name", "email", "department", "designation", "location"]}
@@ -193,6 +234,14 @@ export default function Employees() {
             header: "Access",
             render: (employee) => (
               <div className="flex gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={`Edit ${employee.name}`}
+                  onClick={() => setEditing(employee)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   size="sm"
                   variant={employee.status === "inactive" ? "default" : "outline"}

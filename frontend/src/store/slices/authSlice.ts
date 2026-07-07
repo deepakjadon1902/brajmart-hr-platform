@@ -13,7 +13,7 @@ const persisted = (() => {
   try {
     const raw = localStorage.getItem("auth_user");
     const token = localStorage.getItem("auth_token");
-    return raw && token ? { user: JSON.parse(raw) as User, token } : null;
+    return token ? { user: raw ? (JSON.parse(raw) as User) : null, token } : null;
   } catch {
     return null;
   }
@@ -45,6 +45,12 @@ export const googleLoginThunk = createAsyncThunk(
   },
 );
 
+export const refreshUserThunk = createAsyncThunk("auth/me", async () => {
+  const user = await authService.me();
+  localStorage.setItem("auth_user", JSON.stringify(user));
+  return user;
+});
+
 const slice = createSlice({
   name: "auth",
   initialState,
@@ -60,6 +66,10 @@ const slice = createSlice({
         state.user = { ...state.user, ...action.payload };
         localStorage.setItem("auth_user", JSON.stringify(state.user));
       }
+    },
+    setToken(state, action: PayloadAction<string>) {
+      state.token = action.payload;
+      localStorage.setItem("auth_token", action.payload);
     },
   },
   extraReducers: (b) => {
@@ -88,9 +98,12 @@ const slice = createSlice({
       .addCase(googleLoginThunk.rejected, (s, a) => {
         s.status = "error";
         s.error = a.error.message;
+      })
+      .addCase(refreshUserThunk.fulfilled, (s, a) => {
+        s.user = a.payload;
       });
   },
 });
 
-export const { logout, updateUser } = slice.actions;
+export const { logout, setToken, updateUser } = slice.actions;
 export default slice.reducer;

@@ -1,11 +1,11 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
-import { Activity, Building2, ShieldCheck, Users } from "lucide-react";
+import { Building2, ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { useAppSelector } from "@/store";
 
 export default function P() {
-  const employees = useAppSelector((s) => s.workspace.employees);
+  const { employees, tasks } = useAppSelector((s) => s.workspace);
   const companyCount = useAppSelector((s) => s.company.list.length);
   const activeRoles = new Set(employees.map((employee) => employee.role)).size;
 
@@ -31,10 +31,10 @@ export default function P() {
           icon={<ShieldCheck className="h-5 w-5" />}
         />
         <StatCard
-          label="System health"
-          value="-"
+          label="Open tasks"
+          value={String(tasks.filter((task) => task.status !== "completed").length)}
           tone="success"
-          icon={<Activity className="h-5 w-5" />}
+          icon={<ClipboardList className="h-5 w-5" />}
         />
       </div>
       <Card className="p-6 shadow-soft">

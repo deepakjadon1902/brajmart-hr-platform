@@ -37,6 +37,7 @@ const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional().default(""),
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
+  GOOGLE_CALLBACK_URLS: z.string().optional().default(""),
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM: z.string().email().or(z.string().includes("<")).default("BrajMart HR <no-reply@brajmart.com>"),
   IMAGEKIT_PUBLIC_KEY: z.string().optional().default(""),

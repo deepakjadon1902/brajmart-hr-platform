@@ -20,6 +20,22 @@ function withId(schema) {
 const companyField = { type: String, required: true, index: true };
 const employeeIdField = { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true };
 
+export const Company = mongoose.model(
+  "Company",
+  withId(
+    new mongoose.Schema(
+      {
+        companyId: { type: String, required: true, unique: true, trim: true, maxlength: 40 },
+        name: { type: String, required: true, trim: true, maxlength: 160 },
+        logo: { type: String, trim: true },
+        primaryColor: { type: String, trim: true, maxlength: 32 },
+        createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      },
+      baseOptions,
+    ),
+  ),
+);
+
 export const AttendanceRecord = mongoose.model(
   "AttendanceRecord",
   withId(
@@ -224,6 +240,33 @@ export const PermissionGrant = mongoose.model(
         employeeName: { type: String, required: true, trim: true, maxlength: 120 },
         permission: { type: String, required: true, trim: true, maxlength: 160 },
         granted: { type: Boolean, default: false },
+      },
+      baseOptions,
+    ),
+  ),
+);
+
+export const Task = mongoose.model(
+  "Task",
+  withId(
+    new mongoose.Schema(
+      {
+        companyId: companyField,
+        employeeId: { ...employeeIdField, required: true },
+        employeeName: { type: String, required: true, trim: true, maxlength: 120 },
+        title: { type: String, required: true, trim: true, maxlength: 180 },
+        description: { type: String, trim: true, maxlength: 2000 },
+        priority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
+        status: {
+          type: String,
+          enum: ["not-started", "in-progress", "completed"],
+          default: "not-started",
+          index: true,
+        },
+        dueDate: { type: String, trim: true },
+        assignedById: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        assignedByName: { type: String, required: true, trim: true, maxlength: 120 },
+        completedAt: { type: Date },
       },
       baseOptions,
     ),

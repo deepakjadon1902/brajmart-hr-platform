@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   googleLogin,
+  googleCallback,
+  googleCallbackSchema,
   googleConfig,
   googleLoginSchema,
   login,
@@ -25,6 +27,7 @@ export const authRoutes = Router();
 authRoutes.post("/login", validate(loginSchema), login);
 authRoutes.get("/google/config", googleConfig);
 authRoutes.post("/google", validate(googleLoginSchema), googleLogin);
+authRoutes.get("/google/callback", validate(googleCallbackSchema), googleCallback);
 authRoutes.post("/register", validate(registerSchema), register);
 authRoutes.post("/password-reset/request", validate(passwordResetRequestSchema), requestPasswordReset);
 authRoutes.post("/password-reset/verify", validate(passwordResetVerifySchema), verifyPasswordResetOtp);

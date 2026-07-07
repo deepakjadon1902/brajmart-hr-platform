@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { canAccessAnyPortal } from "../utils/portalAccess.js";
 
 export const requireAuth = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization || "";
@@ -22,7 +23,7 @@ export const requireAuth = asyncHandler(async (req, _res, next) => {
 });
 
 export const allowRoles = (...roles) => (req, _res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user || !canAccessAnyPortal(req.user, roles)) {
     return next(new AppError("You do not have permission to perform this action", 403));
   }
   return next();

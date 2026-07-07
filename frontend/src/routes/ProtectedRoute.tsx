@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAppSelector } from "@/store";
 import { ROLE_META } from "@/constants/nav";
 import type { Role } from "@/types";
+import { canAccessAnyPortal, defaultHomeFor } from "@/utils/portalAccess";
 
 export function ProtectedRoute({
   allow,
@@ -18,8 +19,8 @@ export function ProtectedRoute({
   if (!user || !token) {
     return <Navigate to={ROLE_META[primaryRole].loginPath} state={{ from: location }} replace />;
   }
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to={ROLE_META[user.role].home} replace />;
+  if (!canAccessAnyPortal(user, allowedRoles)) {
+    return <Navigate to={defaultHomeFor(user)} replace />;
   }
   return <>{children}</>;
 }

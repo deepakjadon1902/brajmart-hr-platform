@@ -55,9 +55,11 @@ export function clearRefreshCookie(res) {
 export async function issueSession(res, user) {
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
-  await user.setRefreshToken(refreshToken);
-  user.lastLoginAt = new Date();
-  await user.save();
+  const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+  await user.constructor.updateOne(
+    { _id: user._id },
+    { $set: { refreshTokenHash, lastLoginAt: new Date() } },
+  );
   setRefreshCookie(res, refreshToken);
   return { user: user.toJSON(), token: accessToken };
 }

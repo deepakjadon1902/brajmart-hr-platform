@@ -18,6 +18,7 @@ const EmpDashboard = lazy(() => import("@/modules/employee/pages/Dashboard"));
 const EmpProfile = lazy(() => import("@/modules/employee/pages/Profile"));
 const EmpAttendance = lazy(() => import("@/modules/employee/pages/Attendance"));
 const EmpLeaves = lazy(() => import("@/modules/employee/pages/Leaves"));
+const EmpTasks = lazy(() => import("@/modules/employee/pages/Tasks"));
 const EmpHolidays = lazy(() => import("@/modules/employee/pages/Holidays"));
 const EmpShifts = lazy(() => import("@/modules/employee/pages/Shifts"));
 const EmpPayslips = lazy(() => import("@/modules/employee/pages/Payslips"));
@@ -34,6 +35,7 @@ const HRDashboard = lazy(() => import("@/modules/hr/pages/Dashboard"));
 const HREmployees = lazy(() => import("@/modules/hr/pages/Employees"));
 const HRAttendance = lazy(() => import("@/modules/hr/pages/Attendance"));
 const HRLeaves = lazy(() => import("@/modules/hr/pages/Leaves"));
+const HRTasks = lazy(() => import("@/modules/hr/pages/Tasks"));
 const HRRecruitment = lazy(() => import("@/modules/hr/pages/Recruitment"));
 const HRInterviews = lazy(() => import("@/modules/hr/pages/Interviews"));
 const HRPerformance = lazy(() => import("@/modules/hr/pages/Performance"));
@@ -48,6 +50,7 @@ const HRMail = lazy(() => import("@/modules/hr/pages/MailCenter"));
 const HRAnnouncements = lazy(() => import("@/modules/hr/pages/Announcements"));
 const HRSettings = lazy(() => import("@/modules/hr/pages/Settings"));
 const HRClients = lazy(() => import("@/modules/digital-marketing/pages/Clients"));
+const MailCenter = lazy(() => import("@/modules/hr/pages/MailCenter"));
 
 // Team Manager pages
 const TMDashboard = lazy(() => import("@/modules/team-manager/pages/Dashboard"));
@@ -64,6 +67,7 @@ const SACompanies = lazy(() => import("@/modules/super-admin/pages/Companies"));
 const SARoles = lazy(() => import("@/modules/super-admin/pages/Roles"));
 const SAPermissions = lazy(() => import("@/modules/super-admin/pages/Permissions"));
 const SAUsers = lazy(() => import("@/modules/super-admin/pages/Users"));
+const SATasks = lazy(() => import("@/modules/super-admin/pages/Tasks"));
 const SASalary = lazy(() => import("@/modules/super-admin/pages/Salary"));
 const SAAudit = lazy(() => import("@/modules/super-admin/pages/AuditLogs"));
 const SASystem = lazy(() => import("@/modules/super-admin/pages/SystemLogs"));
@@ -100,7 +104,7 @@ export function AppRoutes() {
         <Route
           path="/employee"
           element={
-            <ProtectedRoute allow={["employee", "hr", "super-admin"]}>
+            <ProtectedRoute allow={["employee", "team-manager", "hr", "super-admin"]}>
               <PortalLayout role="employee" />
             </ProtectedRoute>
           }
@@ -110,6 +114,7 @@ export function AppRoutes() {
           <Route path="profile" element={<EmpProfile />} />
           <Route path="attendance" element={<EmpAttendance />} />
           <Route path="leaves" element={<EmpLeaves />} />
+          <Route path="tasks" element={<EmpTasks />} />
           <Route path="holidays" element={<EmpHolidays />} />
           <Route path="shifts" element={<EmpShifts />} />
           <Route path="payslips" element={<EmpPayslips />} />
@@ -137,6 +142,7 @@ export function AppRoutes() {
           <Route path="clients" element={<HRClients />} />
           <Route path="attendance" element={<HRAttendance />} />
           <Route path="leaves" element={<HRLeaves />} />
+          <Route path="tasks" element={<HRTasks />} />
           <Route path="recruitment" element={<HRRecruitment />} />
           <Route path="interviews" element={<HRInterviews />} />
           <Route path="performance" element={<HRPerformance />} />
@@ -186,6 +192,8 @@ export function AppRoutes() {
           <Route path="roles" element={<SARoles />} />
           <Route path="permissions" element={<SAPermissions />} />
           <Route path="users" element={<SAUsers />} />
+          <Route path="tasks" element={<SATasks />} />
+          <Route path="mail" element={<MailCenter />} />
           <Route path="salary" element={<SASalary />} />
           <Route path="audit" element={<SAAudit />} />
           <Route path="system" element={<SASystem />} />

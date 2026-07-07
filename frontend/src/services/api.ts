@@ -9,6 +9,8 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("auth_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const activeCompany = localStorage.getItem("active_company");
+  if (activeCompany) config.headers["X-Company-Id"] = activeCompany;
   return config;
 });
 

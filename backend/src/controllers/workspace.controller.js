@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   Asset,
+  Company,
   AttendanceRecord,
   Client,
   Holiday,
@@ -11,6 +12,7 @@ import {
   PermissionGrant,
   RoleAssignment,
   Shift,
+  Task,
 } from "../models/PortalData.js";
 import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
@@ -36,6 +38,8 @@ const resourceMap = {
   invoices: { model: Invoice, roles: ["hr", "super-admin", "digital-marketing"] },
   roleAssignments: { model: RoleAssignment, roles: ["super-admin"] },
   permissionGrants: { model: PermissionGrant, roles: ["super-admin"] },
+  tasks: { model: Task, employeeScoped: true, roles: ["employee", "hr", "team-manager", "super-admin"] },
+  companies: { model: Company, roles: ["super-admin"], global: true },
 };
 
 export const workspaceResourceSchema = z.object({
@@ -60,6 +64,12 @@ function getConfig(resource) {
   return resourceMap[resource];
 }
 
+function selectedCompanyId(req) {
+  if (req.user.role !== "super-admin") return req.user.companyId;
+  const requested = String(req.headers["x-company-id"] || req.query.companyId || "").trim();
+  return requested || req.user.companyId;
+}
+
 function assertCanUseResource(req, resource, config, write = false) {
   if (config.roles && !config.roles.includes(req.user.role)) {
     throw new AppError("You do not have permission to access this portal data", 403);
@@ -71,7 +81,8 @@ function assertCanUseResource(req, resource, config, write = false) {
 }
 
 function scopeForUser(req, config) {
-  const filter = { companyId: req.user.companyId };
+  if (config.global) return {};
+  const filter = { companyId: selectedCompanyId(req) };
   if (config.employeeScoped && !["hr", "team-manager", "super-admin"].includes(req.user.role)) {
     filter.employeeId = req.user.id;
   }
@@ -90,12 +101,17 @@ function clean(body) {
 
 async function enrichCreate(req, resource, body) {
   const record = clean(body);
-  record.companyId = req.user.companyId;
+  if (resource === "companies") {
+    record.companyId = String(body.companyId || `c${Date.now()}`).trim();
+    record.createdBy = req.user.id;
+    return record;
+  }
+  record.companyId = selectedCompanyId(req);
 
-  if (["attendance", "leaves", "payslips", "assets", "notifications", "roleAssignments", "permissionGrants"].includes(resource)) {
+  if (["attendance", "leaves", "payslips", "assets", "notifications", "roleAssignments", "permissionGrants", "tasks"].includes(resource)) {
     record.employeeId = record.employeeId || req.user.id;
     if (req.user.role === "employee") record.employeeId = req.user.id;
-    const employee = await User.findOne({ _id: record.employeeId, companyId: req.user.companyId });
+    const employee = await User.findOne({ _id: record.employeeId, companyId: record.companyId });
     if (!employee) throw new AppError("Employee not found", 404);
     record.employeeName = record.employeeName || employee.name;
   }
@@ -122,6 +138,12 @@ async function enrichCreate(req, resource, body) {
     record.paidOn = record.paidOn || (record.status === "paid" ? today() : undefined);
   }
   if (resource === "notifications") record.time = record.time || nowStamp();
+  if (resource === "tasks") {
+    record.status = record.status || "not-started";
+    record.priority = record.priority || "medium";
+    record.assignedById = req.user.id;
+    record.assignedByName = req.user.name;
+  }
 
   return record;
 }
@@ -143,11 +165,32 @@ export const createWorkspaceRecord = asyncHandler(async (req, res) => {
 });
 
 export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
-  const config = getConfig(req.validated.params.resource);
-  assertCanUseResource(req, req.validated.params.resource, config, true);
+  const resource = req.validated.params.resource;
+  const config = getConfig(resource);
+  assertCanUseResource(req, resource, config, true);
+  const patch = clean(req.validated.body);
+  if (resource === "tasks") {
+    const existing = await config.model.findOne({
+      _id: req.validated.params.id,
+      companyId: selectedCompanyId(req),
+    });
+    if (!existing) throw new AppError("Record not found", 404);
+    const isAssignee = String(existing.employeeId) === req.user.id;
+    const canManage = ["hr", "team-manager", "super-admin"].includes(req.user.role);
+    if (!isAssignee && !canManage) {
+      throw new AppError("You do not have permission to update this task", 403);
+    }
+    if (isAssignee && !canManage) {
+      Object.keys(patch).forEach((key) => {
+        if (!["status"].includes(key)) delete patch[key];
+      });
+    }
+    if (patch.status === "completed") patch.completedAt = new Date();
+    if (patch.status && patch.status !== "completed") patch.completedAt = undefined;
+  }
   const record = await config.model.findOneAndUpdate(
-    { _id: req.validated.params.id, companyId: req.user.companyId },
-    { $set: clean(req.validated.body) },
+    { _id: req.validated.params.id, ...(config.global ? {} : { companyId: selectedCompanyId(req) }) },
+    { $set: patch },
     { new: true, runValidators: true },
   );
   if (!record) throw new AppError("Record not found", 404);
@@ -159,7 +202,7 @@ export const deleteWorkspaceRecord = asyncHandler(async (req, res) => {
   assertCanUseResource(req, req.validated.params.resource, config, true);
   const record = await config.model.findOneAndDelete({
     _id: req.validated.params.id,
-    companyId: req.user.companyId,
+    ...(config.global ? {} : { companyId: selectedCompanyId(req) }),
   });
   if (!record) throw new AppError("Record not found", 404);
   return success(res, record);

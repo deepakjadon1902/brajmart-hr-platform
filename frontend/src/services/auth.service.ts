@@ -34,6 +34,10 @@ export const authService = {
     const { data } = await api.get("/auth/google/config");
     return data.data.clientId;
   },
+  async me(): Promise<User> {
+    const { data } = await api.get("/auth/me");
+    return data.data.user;
+  },
   async requestPasswordReset(email: string) {
     try {
       const { data } = await api.post("/auth/password-reset/request", { email });

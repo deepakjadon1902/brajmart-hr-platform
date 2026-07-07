@@ -9,6 +9,7 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 export const listUsersSchema = z.object({
   query: z.object({
     role: z.enum(ROLES).optional(),
+    companyId: z.string().trim().max(40).optional(),
     search: z.string().trim().max(100).optional(),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().min(1).max(100).default(25),
@@ -31,6 +32,7 @@ export const createUserSchema = z.object({
     monthlyCtc: z.number().optional(),
     annualCtc: z.number().optional(),
     bankAccount: z.string().trim().max(80).optional(),
+    companyId: z.string().trim().max(40).optional(),
   }),
 });
 
@@ -51,14 +53,21 @@ export const updateUserSchema = z.object({
     bankAccount: z.string().trim().max(80).optional(),
     avatar: z.string().url().optional(),
     status: z.enum(["active", "inactive", "on-leave"]).optional(),
+    companyId: z.string().trim().max(40).optional(),
   }),
 });
 
 export const idParamSchema = z.object({ params: z.object({ id: objectId }) });
 
+function selectedCompanyId(req) {
+  if (req.user.role !== "super-admin") return req.user.companyId;
+  const requested = String(req.headers["x-company-id"] || req.validated?.query?.companyId || "").trim();
+  return requested || req.user.companyId;
+}
+
 export const listUsers = asyncHandler(async (req, res) => {
   const { role, search, page, limit } = req.validated.query;
-  const filter = { companyId: req.user.companyId };
+  const filter = { companyId: selectedCompanyId(req) };
   if (role) filter.role = role;
   if (search) {
     filter.$or = [
@@ -86,7 +95,10 @@ export const createUser = asyncHandler(async (req, res) => {
 
   const user = new User({
     ...req.validated.body,
-    companyId: req.user.companyId,
+    companyId:
+      req.user.role === "super-admin" && req.validated.body.companyId
+        ? req.validated.body.companyId
+        : req.user.companyId,
   });
 
   if (req.validated.body.password) {
@@ -105,7 +117,11 @@ export const getUser = asyncHandler(async (req, res) => {
     throw new AppError("You do not have permission to view this user", 403);
   }
 
-  const user = await User.findOne({ _id: req.validated.params.id, companyId: req.user.companyId });
+  const filter =
+    req.user.role === "super-admin"
+      ? { _id: req.validated.params.id }
+      : { _id: req.validated.params.id, companyId: req.user.companyId };
+  const user = await User.findOne(filter);
   if (!user) throw new AppError("User not found", 404);
   return success(res, user);
 });
@@ -126,10 +142,19 @@ export const updateUser = asyncHandler(async (req, res) => {
     delete req.validated.body.monthlyCtc;
     delete req.validated.body.annualCtc;
     delete req.validated.body.bankAccount;
+    delete req.validated.body.companyId;
   }
 
+  if (req.user.role !== "super-admin") {
+    delete req.validated.body.companyId;
+  }
+
+  const filter =
+    req.user.role === "super-admin"
+      ? { _id: req.validated.params.id }
+      : { _id: req.validated.params.id, companyId: req.user.companyId };
   const user = await User.findOneAndUpdate(
-    { _id: req.validated.params.id, companyId: req.user.companyId },
+    filter,
     { $set: req.validated.body },
     { new: true, runValidators: true },
   );
@@ -138,8 +163,12 @@ export const updateUser = asyncHandler(async (req, res) => {
 });
 
 export const removeUser = asyncHandler(async (req, res) => {
+  const filter =
+    req.user.role === "super-admin"
+      ? { _id: req.validated.params.id }
+      : { _id: req.validated.params.id, companyId: req.user.companyId };
   const user = await User.findOneAndUpdate(
-    { _id: req.validated.params.id, companyId: req.user.companyId },
+    filter,
     { $set: { status: "inactive" } },
     { new: true },
   );

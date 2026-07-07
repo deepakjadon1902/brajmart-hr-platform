@@ -15,6 +15,7 @@ import type {
   Payslip,
   RoleAssignment,
   Shift,
+  Task,
 } from "@/types";
 
 type NewEmployee = Omit<Employee, "id" | "role" | "companyId" | "status" | "joinDate"> &
@@ -35,6 +36,7 @@ interface WorkspaceState {
   messages: Message[];
   roleAssignments: RoleAssignment[];
   permissionGrants: PermissionGrant[];
+  tasks: Task[];
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -59,6 +61,7 @@ const defaultState: WorkspaceState = {
   messages: [],
   roleAssignments: [],
   permissionGrants: [],
+  tasks: [],
 };
 
 const initialState = defaultState;
@@ -76,6 +79,7 @@ const resources = [
   "messages",
   "roleAssignments",
   "permissionGrants",
+  "tasks",
 ] as const;
 
 function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee {
@@ -91,10 +95,13 @@ function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee
     avatar: item.avatar,
     joinDate: item.joinDate,
     status: item.status ?? "active",
+    location: item.location,
+    manager: item.manager,
     salary: item.salary,
     baseSalary: item.baseSalary,
     monthlyCtc: item.monthlyCtc,
     annualCtc: item.annualCtc,
+    bankAccount: item.bankAccount,
   };
 }
 
@@ -118,6 +125,7 @@ export const fetchWorkspace = createAsyncThunk("workspace/fetchWorkspace", async
     messages,
     roleAssignments,
     permissionGrants,
+    tasks,
   ] = await Promise.all(
     resources.map(async (resource) => {
       const url =
@@ -153,6 +161,7 @@ export const fetchWorkspace = createAsyncThunk("workspace/fetchWorkspace", async
     messages,
     roleAssignments,
     permissionGrants,
+    tasks,
   } as WorkspaceState;
 });
 
@@ -174,6 +183,7 @@ export const createEmployee = createAsyncThunk(
       bankAccount: employee.bankAccount,
       location: employee.location,
       manager: employee.manager,
+      companyId: employee.companyId,
     });
     return normalizeEmployee(data.data);
   },
@@ -225,7 +235,8 @@ export const markAttendance = createAsyncThunk(
         checkIn: existing.checkIn || nowTime(),
         checkOut: existing.checkIn && !existing.checkOut ? nowTime() : undefined,
         status: "present",
-        hoursWorked: existing.checkIn && !existing.checkOut ? Math.max(existing.hoursWorked ?? 8, 8) : 0,
+        hoursWorked:
+          existing.checkIn && !existing.checkOut ? Math.max(existing.hoursWorked ?? 8, 8) : 0,
         location: record.location ?? existing.location,
       });
       return data.data as AttendanceRecord;
@@ -297,15 +308,21 @@ export const updateDocumentStatus = createAsyncThunk(
 
 export const sendMessage = createAsyncThunk(
   "workspace/sendMessage",
-  async (message: Omit<Message, "id" | "sentOn" | "read"> & Partial<Pick<Message, "read">>) => {
+  async (
+    message: Omit<Message, "id" | "sentOn" | "read" | "toName"> &
+      Partial<Pick<Message, "read" | "toName">>,
+  ) => {
     const { data } = await api.post("/messages", message);
-    return data.data as Message;
+    return data.data as Message | Message[];
   },
 );
 
 export const paySalary = createAsyncThunk(
   "workspace/paySalary",
-  async ({ employeeId, month, deductions }: { employeeId: string; month: string; deductions?: number }, { getState }) => {
+  async (
+    { employeeId, month, deductions }: { employeeId: string; month: string; deductions?: number },
+    { getState },
+  ) => {
     const state = getState() as { workspace: WorkspaceState };
     const employee = state.workspace.employees.find((item) => item.id === employeeId);
     if (!employee) throw new Error("Employee not found");
@@ -329,6 +346,45 @@ export const setPermissionGrant = createAsyncThunk(
   async ({ id, granted }: { id: string; granted: boolean }) => {
     const { data } = await api.patch(`/workspace/permissionGrants/${id}`, { granted });
     return data.data as PermissionGrant;
+  },
+);
+
+export const addRoleAssignment = createAsyncThunk(
+  "workspace/addRoleAssignment",
+  async (assignment: { employeeId: string; roleName: string; workScope: string }) => {
+    const { data } = await api.post("/workspace/roleAssignments", assignment);
+    return data.data as RoleAssignment;
+  },
+);
+
+export const addPermissionGrant = createAsyncThunk(
+  "workspace/addPermissionGrant",
+  async (grant: { employeeId: string; permission: string; granted?: boolean }) => {
+    const { data } = await api.post("/workspace/permissionGrants", grant);
+    return data.data as PermissionGrant;
+  },
+);
+
+export const addTask = createAsyncThunk(
+  "workspace/addTask",
+  async (task: {
+    employeeId: string;
+    title: string;
+    description?: string;
+    priority?: Task["priority"];
+    dueDate?: string;
+  }) => {
+    const { data } = await api.post("/workspace/tasks", task);
+    return data.data as Task;
+  },
+);
+
+export const updateTask = createAsyncThunk(
+  "workspace/updateTask",
+  async (task: Partial<Task> & Pick<Task, "id">) => {
+    const { id, ...body } = task;
+    const { data } = await api.patch(`/workspace/tasks/${id}`, body);
+    return data.data as Task;
   },
 );
 
@@ -399,7 +455,8 @@ const slice = createSlice({
         if (existing) Object.assign(existing, action.payload);
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
-        state.messages.unshift(action.payload);
+        const messages = Array.isArray(action.payload) ? action.payload : [action.payload];
+        state.messages.unshift(...messages);
       })
       .addCase(paySalary.fulfilled, (state, action) => {
         state.payslips.unshift(action.payload);
@@ -407,12 +464,23 @@ const slice = createSlice({
       .addCase(setPermissionGrant.fulfilled, (state, action) => {
         const existing = state.permissionGrants.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
+      })
+      .addCase(addRoleAssignment.fulfilled, (state, action) => {
+        state.roleAssignments.unshift(action.payload);
+      })
+      .addCase(addPermissionGrant.fulfilled, (state, action) => {
+        state.permissionGrants.unshift(action.payload);
+      })
+      .addCase(addTask.fulfilled, (state, action) => {
+        state.tasks.unshift(action.payload);
+      })
+      .addCase(updateTask.fulfilled, (state, action) => {
+        const existing = state.tasks.find((item) => item.id === action.payload.id);
+        if (existing) Object.assign(existing, action.payload);
+        else state.tasks.unshift(action.payload);
       });
   },
 });
 
-export const {
-  addEmployee,
-  upsertCurrentEmployee,
-} = slice.actions;
+export const { addEmployee, upsertCurrentEmployee } = slice.actions;
 export default slice.reducer;

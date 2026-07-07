@@ -10,11 +10,19 @@ export interface User {
   department?: string;
   designation?: string;
   phone?: string;
+  location?: string;
+  manager?: string;
+  salary?: number;
+  baseSalary?: number;
+  monthlyCtc?: number;
+  annualCtc?: number;
+  bankAccount?: string;
   joinDate?: string;
 }
 
 export interface Company {
   id: string;
+  companyId?: string;
   name: string;
   logo?: string;
   primaryColor?: string;
@@ -22,14 +30,7 @@ export interface Company {
 
 export interface Employee extends User {
   status: "active" | "inactive" | "on-leave";
-  manager?: string;
-  location?: string;
-  salary?: number;
   password?: string;
-  baseSalary?: number;
-  monthlyCtc?: number;
-  annualCtc?: number;
-  bankAccount?: string;
 }
 
 export interface AttendanceRecord {
@@ -166,4 +167,21 @@ export interface PermissionGrant {
   employeeName: string;
   permission: string;
   granted: boolean;
+}
+
+export type TaskStatus = "not-started" | "in-progress" | "completed";
+
+export interface Task {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  title: string;
+  description?: string;
+  priority: "low" | "medium" | "high";
+  status: TaskStatus;
+  dueDate?: string;
+  assignedById: string;
+  assignedByName: string;
+  completedAt?: string;
+  createdAt?: string;
 }

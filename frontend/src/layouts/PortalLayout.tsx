@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import type { Role } from "@/types";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchEmployees, upsertCurrentEmployee } from "@/store/slices/workspaceSlice";
+import { canAccessPortal } from "@/utils/portalAccess";
 
 export function PortalLayout({ role }: { role: Role }) {
   const dispatch = useAppDispatch();
@@ -20,7 +21,7 @@ export function PortalLayout({ role }: { role: Role }) {
         status: "active",
       }),
     );
-    if (["hr", "team-manager", "super-admin"].includes(user.role)) {
+    if (canAccessPortal(user, "team-manager") || canAccessPortal(user, "hr")) {
       dispatch(fetchEmployees());
     }
   }, [dispatch, user]);

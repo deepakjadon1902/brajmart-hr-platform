@@ -15,6 +15,7 @@ import { toggleSidebar } from "@/store/slices/uiSlice";
 import { setLanguage } from "@/store/slices/themeSlice";
 import { logout } from "@/store/slices/authSlice";
 import { setActive } from "@/store/slices/companySlice";
+import { fetchEmployees, fetchWorkspace } from "@/store/slices/workspaceSlice";
 import { useNavigate } from "react-router-dom";
 import {
   Select,
@@ -37,6 +38,12 @@ export function Topbar() {
   const onLogout = () => {
     dispatch(logout());
     navigate("/", { replace: true });
+  };
+
+  const onCompanyChange = (companyId: string) => {
+    dispatch(setActive(companyId));
+    dispatch(fetchEmployees());
+    dispatch(fetchWorkspace());
   };
 
   return (
@@ -63,7 +70,7 @@ export function Topbar() {
 
       <div className="ml-auto flex items-center gap-2">
         {user?.role === "super-admin" && (
-          <Select value={company.activeId} onValueChange={(v) => dispatch(setActive(v))}>
+          <Select value={company.activeId} onValueChange={onCompanyChange}>
             <SelectTrigger className="hidden h-9 w-48 border-black/5 bg-muted/70 shadow-none md:flex">
               <SelectValue />
             </SelectTrigger>

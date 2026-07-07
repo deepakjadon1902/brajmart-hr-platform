@@ -1,7 +1,7 @@
 import { z } from "zod";
 import crypto from "node:crypto";
 import { verifyRefreshToken, issueSession, clearRefreshCookie } from "../services/token.service.js";
-import { verifyGoogleCredential } from "../services/google.service.js";
+import { verifyGoogleAuthorizationCode, verifyGoogleCredential } from "../services/google.service.js";
 import { sendEmail } from "../services/email.service.js";
 import { env } from "../config/env.js";
 import { User, ROLES } from "../models/User.js";
@@ -9,6 +9,7 @@ import { PasswordResetOtp } from "../models/PasswordResetOtp.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { success } from "../utils/http.js";
+import { canAccessPortal } from "../utils/portalAccess.js";
 
 export const loginSchema = z.object({
   body: z.object({
@@ -22,6 +23,13 @@ export const googleLoginSchema = z.object({
   body: z.object({
     credential: z.string().min(20),
     role: z.enum(ROLES).optional(),
+  }),
+});
+
+export const googleCallbackSchema = z.object({
+  query: z.object({
+    code: z.string().min(10),
+    state: z.string().optional(),
   }),
 });
 
@@ -58,13 +66,9 @@ export const registerSchema = z.object({
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password, role } = req.validated.body;
-  const roleFilter =
-    role === "digital-marketing" ? { $in: ["digital-marketing", "super-admin"] } : role;
-  const user = await User.findOne({ email, role: roleFilter }).select(
-    "+passwordHash +refreshTokenHash",
-  );
+  const user = await User.findOne({ email }).select("+passwordHash");
 
-  if (!user || !(await user.verifyPassword(password))) {
+  if (!user || !canAccessPortal(user, role) || !(await user.verifyPassword(password))) {
     throw new AppError("Invalid email, password, or portal role", 401);
   }
 
@@ -91,10 +95,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
   const requestedRole = req.validated.body.role || "employee";
   const existing = await User.findOne({ email: profile.email });
 
-  const allowedRequestedRole =
-    existing?.role === "super-admin" && requestedRole === "digital-marketing"
-      ? true
-      : existing?.role === requestedRole;
+  const allowedRequestedRole = existing ? canAccessPortal(existing, requestedRole) : true;
 
   if (existing && req.validated.body.role && !allowedRequestedRole) {
     throw new AppError("Google account is registered for another portal role", 403);
@@ -120,6 +121,59 @@ export const googleLogin = asyncHandler(async (req, res) => {
 
   const session = await issueSession(res, user);
   return success(res, session);
+});
+
+function callbackUrlForRequest(req) {
+  return `${req.protocol}://${req.get("host")}${req.originalUrl.split("?")[0]}`;
+}
+
+function clientRedirectUrl(req) {
+  const [fallback] = env.CLIENT_URL.split(",").map((origin) => origin.trim()).filter(Boolean);
+  const origin = req.get("origin");
+  return origin && env.CLIENT_URL.split(",").map((item) => item.trim()).includes(origin)
+    ? origin
+    : fallback;
+}
+
+export const googleCallback = asyncHandler(async (req, res) => {
+  const profile = await verifyGoogleAuthorizationCode(
+    req.validated.query.code,
+    callbackUrlForRequest(req),
+  );
+  const requestedRole = ROLES.includes(req.validated.query.state) ? req.validated.query.state : "employee";
+  const existing = await User.findOne({ email: profile.email });
+  const allowedRequestedRole =
+    existing?.role === "super-admin" && requestedRole === "digital-marketing"
+      ? true
+      : !existing || canAccessPortal(existing, requestedRole);
+
+  if (!allowedRequestedRole) {
+    throw new AppError("Google account is registered for another portal role", 403);
+  }
+
+  const user = await User.findOneAndUpdate(
+    { email: profile.email },
+    {
+      $setOnInsert: {
+        email: profile.email,
+        role: requestedRole,
+        companyId: "c1",
+        status: "active",
+      },
+      $set: {
+        name: profile.name,
+        avatar: profile.avatar,
+        googleId: profile.googleId,
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+
+  const session = await issueSession(res, user);
+  const redirect = new URL(clientRedirectUrl(req) || "http://localhost:8080");
+  redirect.searchParams.set("token", session.token);
+  redirect.searchParams.set("role", user.role);
+  return res.redirect(redirect.toString());
 });
 
 export const googleConfig = asyncHandler(async (_req, res) =>

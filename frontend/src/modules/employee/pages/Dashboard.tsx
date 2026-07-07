@@ -14,7 +14,7 @@ import { markAttendance } from "@/store/slices/workspaceSlice";
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
   const dispatch = useAppDispatch();
-  const { attendance, employees, holidays, leaves, notifications, payslips } = useAppSelector(
+  const { attendance, employees, holidays, leaves, notifications, payslips, tasks } = useAppSelector(
     (s) => s.workspace,
   );
   const [time, setTime] = useState(new Date());
@@ -24,6 +24,7 @@ export default function Dashboard() {
     (record) => record.employeeId === currentEmployee?.id,
   );
   const employeeLeaves = leaves.filter((leave) => leave.employeeId === currentEmployee?.id);
+  const employeeTasks = tasks.filter((task) => task.employeeId === currentEmployee?.id);
   const todayRecord = employeeAttendance.find(
     (record) => record.date === new Date().toISOString().slice(0, 10),
   );
@@ -91,8 +92,8 @@ export default function Dashboard() {
         />
         <StatCard
           label="Tasks open"
-          value="0"
-          delta="No assigned tasks"
+          value={String(employeeTasks.filter((task) => task.status !== "completed").length)}
+          delta={`${employeeTasks.filter((task) => task.status === "in-progress").length} in progress`}
           icon={<Activity className="h-5 w-5" />}
           tone="warning"
         />

@@ -11,8 +11,16 @@ import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { markAttendance } from "@/store/slices/workspaceSlice";
 
+function formatDuration(hours = 0) {
+  const totalMinutes = Math.round(hours * 60);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`;
+}
+
 export default function Attendance() {
-  const [loc, setLoc] = useState("Detecting…");
+  const [loc, setLoc] = useState("Detecting...");
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { attendance, employees } = useAppSelector((s) => s.workspace);
@@ -55,8 +63,20 @@ export default function Attendance() {
                   employeeId: currentEmployee.id,
                   employeeName: currentEmployee.name,
                 }),
-              );
-              toast.success(checked ? "Checked out" : "Checked in");
+              )
+                .unwrap()
+                .then((record) =>
+                  toast.success(
+                    checked
+                      ? `Checked out. Duration ${formatDuration(record.hoursWorked ?? 0)}`
+                      : "Checked in",
+                  ),
+                )
+                .catch((error) =>
+                  toast.error(
+                    error instanceof Error ? error.message : "Unable to update attendance",
+                  ),
+                );
             }}
           >
             {checked ? (
@@ -72,10 +92,16 @@ export default function Attendance() {
             )}
           </Button>
         </Card>
-        <StatCard label="Today" value={`${todayRecord?.hoursWorked ?? 0}h`} icon={<Clock className="h-5 w-5" />} />
+        <StatCard
+          label="Today"
+          value={formatDuration(todayRecord?.hoursWorked ?? 0)}
+          icon={<Clock className="h-5 w-5" />}
+        />
         <StatCard
           label="This month"
-          value={`${employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0)}h`}
+          value={formatDuration(
+            employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0),
+          )}
           delta={`${employeeAttendance.length} records`}
           icon={<Activity className="h-5 w-5" />}
           tone="success"
@@ -89,7 +115,11 @@ export default function Attendance() {
           { key: "date", header: "Date" },
           { key: "checkIn", header: "Check In" },
           { key: "checkOut", header: "Check Out" },
-          { key: "hoursWorked", header: "Hours" },
+          {
+            key: "hoursWorked",
+            header: "Hours",
+            render: (r) => formatDuration(r.hoursWorked ?? 0),
+          },
           { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
         ]}
         toolbar={<ExportButtons rows={employeeAttendance} filename="attendance" />}
@@ -97,4 +127,3 @@ export default function Attendance() {
     </div>
   );
 }
-

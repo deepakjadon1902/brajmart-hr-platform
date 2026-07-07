@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { fetchEmployees, fetchWorkspace } from "@/store/slices/workspaceSlice";
+import {
+  fetchEmployees,
+  fetchWorkspace,
+  hydrateWorkspaceCache,
+} from "@/store/slices/workspaceSlice";
 import { refreshUserThunk, setToken } from "@/store/slices/authSlice";
 import { fetchCompanies } from "@/store/slices/companySlice";
 
@@ -12,6 +16,8 @@ export default function App() {
   const activeCompanyId = useAppSelector((state) => state.company.activeId);
   const role = user?.role;
   const designation = user?.designation;
+  const userId = user?.id;
+  const companyId = activeCompanyId || user?.companyId;
   const canLoadEmployees =
     role === "super-admin" ||
     role === "hr" ||
@@ -36,13 +42,14 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
+    dispatch(hydrateWorkspaceCache({ userId, companyId }));
     dispatch(refreshUserThunk());
     if (role === "super-admin") dispatch(fetchCompanies());
     if (canLoadEmployees) {
       dispatch(fetchEmployees());
     }
     dispatch(fetchWorkspace());
-  }, [activeCompanyId, canLoadEmployees, dispatch, role, token]);
+  }, [canLoadEmployees, companyId, dispatch, role, token, userId]);
 
   return <AppRoutes />;
 }

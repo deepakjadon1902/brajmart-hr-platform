@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppSelector, useAppDispatch } from "@/store";
-import { updateUser } from "@/store/slices/authSlice";
+import { updateProfileThunk } from "@/store/slices/authSlice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,9 +60,14 @@ export default function Profile() {
         <Card className="p-6 lg:col-span-2 shadow-soft">
           <form
             className="space-y-4"
-            onSubmit={handleSubmit((v) => {
-              dispatch(updateUser(v));
-              toast.success("Profile updated");
+            onSubmit={handleSubmit(async (v) => {
+              if (!user?.id) return;
+              try {
+                await dispatch(updateProfileThunk({ userId: user.id, profile: v })).unwrap();
+                toast.success("Profile updated");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Unable to update profile");
+              }
             })}
           >
             <div className="grid gap-4 sm:grid-cols-2">

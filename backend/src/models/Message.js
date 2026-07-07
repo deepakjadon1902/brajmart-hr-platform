@@ -25,8 +25,7 @@ messageSchema.set("toJSON", {
   transform: (_doc, ret) => {
     delete ret._id;
     if (ret.sentOn?.toISOString) {
-      const iso = ret.sentOn.toISOString();
-      ret.sentOn = `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+      ret.sentOn = ret.sentOn.toISOString();
     }
     return ret;
   },

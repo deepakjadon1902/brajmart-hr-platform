@@ -39,8 +39,31 @@ interface WorkspaceState {
   tasks: Task[];
 }
 
+type RootLikeState = {
+  auth?: { user?: { id?: string; companyId?: string } | null };
+  company?: { activeId?: string };
+  workspace?: WorkspaceState;
+};
+
+const workspaceCachePrefix = "workspace_cache_v2";
+
 const today = () => new Date().toISOString().slice(0, 10);
 const nowTime = () => new Date().toTimeString().slice(0, 5);
+const minutesFromTime = (value?: string) => {
+  const [hours, minutes] = String(value || "")
+    .split(":")
+    .map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
+const hoursBetweenTimes = (start?: string, end?: string) => {
+  const startMinutes = minutesFromTime(start);
+  const endMinutes = minutesFromTime(end);
+  if (startMinutes === null || endMinutes === null) return 0;
+  const diff =
+    endMinutes >= startMinutes ? endMinutes - startMinutes : endMinutes + 24 * 60 - startMinutes;
+  return Math.round((diff / 60) * 100) / 100;
+};
 const nowStamp = () => {
   const d = new Date();
   return `${d.toISOString().slice(0, 10)} ${d.toTimeString().slice(0, 5)}`;
@@ -64,7 +87,65 @@ const defaultState: WorkspaceState = {
   tasks: [],
 };
 
-const initialState = defaultState;
+function workspaceCacheKey(userId?: string, companyId?: string) {
+  return userId ? `${workspaceCachePrefix}:${userId}:${companyId || "default"}` : "";
+}
+
+function currentCacheKey() {
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    const user = rawUser ? (JSON.parse(rawUser) as { id?: string; companyId?: string }) : null;
+    return workspaceCacheKey(user?.id, localStorage.getItem("active_company") || user?.companyId);
+  } catch {
+    return "";
+  }
+}
+
+function readWorkspaceCache(userId?: string, companyId?: string): Partial<WorkspaceState> | null {
+  try {
+    const raw = localStorage.getItem(workspaceCacheKey(userId, companyId));
+    return raw ? (JSON.parse(raw) as Partial<WorkspaceState>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistWorkspaceCache(
+  state: Partial<WorkspaceState>,
+  userId?: string,
+  companyId?: string,
+) {
+  try {
+    const key = userId || companyId ? workspaceCacheKey(userId, companyId) : currentCacheKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify({ ...defaultState, ...state }));
+  } catch {
+    // Ignore storage quota/private-mode failures; API refresh remains the source of truth.
+  }
+}
+
+const initialState = {
+  ...defaultState,
+  ...(readWorkspaceCache(
+    (() => {
+      try {
+        const raw = localStorage.getItem("auth_user");
+        return raw ? (JSON.parse(raw) as { id?: string }).id : undefined;
+      } catch {
+        return undefined;
+      }
+    })(),
+    (() => {
+      try {
+        const raw = localStorage.getItem("auth_user");
+        const user = raw ? (JSON.parse(raw) as { companyId?: string }) : null;
+        return localStorage.getItem("active_company") || user?.companyId;
+      } catch {
+        return undefined;
+      }
+    })(),
+  ) ?? {}),
+};
 const resources = [
   "attendance",
   "leaves",
@@ -110,60 +191,76 @@ export const fetchEmployees = createAsyncThunk("workspace/fetchEmployees", async
   return (data.data as Array<Partial<Employee> & { _id?: string }>).map(normalizeEmployee);
 });
 
-export const fetchWorkspace = createAsyncThunk("workspace/fetchWorkspace", async () => {
-  const [
-    attendance,
-    leaves,
-    holidays,
-    shifts,
-    payslips,
-    assets,
-    notifications,
-    clients,
-    invoices,
-    documents,
-    messages,
-    roleAssignments,
-    permissionGrants,
-    tasks,
-  ] = await Promise.all(
-    resources.map(async (resource) => {
-      const url =
-        resource === "documents"
-          ? "/documents"
-          : resource === "messages"
-            ? "/messages"
-            : `/workspace/${resource}`;
-      try {
-        const { data } = await api.get(url);
-        return data.data;
-      } catch (error: unknown) {
-        if (typeof error === "object" && error && "response" in error) {
-          const status = (error as { response?: { status?: number } }).response?.status;
-          if (status === 403) return [];
-        }
-        throw error;
-      }
-    }),
-  );
+export const hydrateWorkspaceCache = createAsyncThunk(
+  "workspace/hydrateCache",
+  async ({ userId, companyId }: { userId?: string; companyId?: string }) =>
+    readWorkspaceCache(userId, companyId),
+);
 
-  return {
-    attendance,
-    leaves,
-    holidays,
-    shifts,
-    payslips,
-    assets,
-    notifications,
-    clients,
-    invoices,
-    documents,
-    messages,
-    roleAssignments,
-    permissionGrants,
-    tasks,
-  } as WorkspaceState;
-});
+export const fetchWorkspace = createAsyncThunk(
+  "workspace/fetchWorkspace",
+  async (_, { getState }) => {
+    const [
+      attendance,
+      leaves,
+      holidays,
+      shifts,
+      payslips,
+      assets,
+      notifications,
+      clients,
+      invoices,
+      documents,
+      messages,
+      roleAssignments,
+      permissionGrants,
+      tasks,
+    ] = await Promise.all(
+      resources.map(async (resource) => {
+        const url =
+          resource === "documents"
+            ? "/documents"
+            : resource === "messages"
+              ? "/messages"
+              : `/workspace/${resource}`;
+        try {
+          const { data } = await api.get(url);
+          return data.data;
+        } catch (error: unknown) {
+          if (typeof error === "object" && error && "response" in error) {
+            const status = (error as { response?: { status?: number } }).response?.status;
+            if (status === 403) return [];
+          }
+          throw error;
+        }
+      }),
+    );
+
+    const workspace = {
+      attendance,
+      leaves,
+      holidays,
+      shifts,
+      payslips,
+      assets,
+      notifications,
+      clients,
+      invoices,
+      documents,
+      messages,
+      roleAssignments,
+      permissionGrants,
+      tasks,
+    } as WorkspaceState;
+    const state = getState() as RootLikeState;
+    persistWorkspaceCache(
+      { ...(state.workspace ?? defaultState), ...workspace },
+      state.auth?.user?.id,
+      state.company?.activeId || state.auth?.user?.companyId,
+    );
+    return workspace;
+  },
+);
 
 export const createEmployee = createAsyncThunk(
   "workspace/createEmployee",
@@ -231,12 +328,15 @@ export const markAttendance = createAsyncThunk(
       (item) => item.employeeId === record.employeeId && item.date === date,
     );
     if (existing) {
+      const checkOut = existing.checkIn && !existing.checkOut ? nowTime() : existing.checkOut;
       const { data } = await api.patch(`/workspace/attendance/${existing.id}`, {
         checkIn: existing.checkIn || nowTime(),
-        checkOut: existing.checkIn && !existing.checkOut ? nowTime() : undefined,
+        checkOut,
         status: "present",
         hoursWorked:
-          existing.checkIn && !existing.checkOut ? Math.max(existing.hoursWorked ?? 8, 8) : 0,
+          existing.checkIn && checkOut
+            ? hoursBetweenTimes(existing.checkIn, checkOut)
+            : existing.hoursWorked,
         location: record.location ?? existing.location,
       });
       return data.data as AttendanceRecord;
@@ -255,8 +355,8 @@ export const markAttendance = createAsyncThunk(
 export const applyLeave = createAsyncThunk(
   "workspace/applyLeave",
   async (leave: {
-    employeeId: string;
-    employeeName: string;
+    employeeId?: string;
+    employeeName?: string;
     type: LeaveRequest["type"];
     from: string;
     to: string;
@@ -415,69 +515,90 @@ const slice = createSlice({
     builder
       .addCase(fetchWorkspace.fulfilled, (state, action) => {
         Object.assign(state, action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(hydrateWorkspaceCache.fulfilled, (state, action) => {
+        if (action.payload) Object.assign(state, { ...defaultState, ...action.payload });
       })
       .addCase(fetchEmployees.fulfilled, (state, action) => {
         state.employees = action.payload;
+        persistWorkspaceCache(state);
       })
       .addCase(createEmployee.fulfilled, (state, action) => {
         state.employees.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(updateEmployee.fulfilled, (state, action) => {
         const existing = state.employees.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.employees.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(addClient.fulfilled, (state, action) => {
         state.clients.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(upsertInvoice.fulfilled, (state, action) => {
         const existing = state.invoices.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.invoices.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(markAttendance.fulfilled, (state, action) => {
         const existing = state.attendance.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.attendance.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(applyLeave.fulfilled, (state, action) => {
         state.leaves.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(updateLeaveStatus.fulfilled, (state, action) => {
         const existing = state.leaves.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(addDocument.fulfilled, (state, action) => {
         state.documents.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(updateDocumentStatus.fulfilled, (state, action) => {
         const existing = state.documents.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const messages = Array.isArray(action.payload) ? action.payload : [action.payload];
         state.messages.unshift(...messages);
+        persistWorkspaceCache(state);
       })
       .addCase(paySalary.fulfilled, (state, action) => {
         state.payslips.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(setPermissionGrant.fulfilled, (state, action) => {
         const existing = state.permissionGrants.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(addRoleAssignment.fulfilled, (state, action) => {
         state.roleAssignments.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(addPermissionGrant.fulfilled, (state, action) => {
         state.permissionGrants.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(addTask.fulfilled, (state, action) => {
         state.tasks.unshift(action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(updateTask.fulfilled, (state, action) => {
         const existing = state.tasks.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.tasks.unshift(action.payload);
+        persistWorkspaceCache(state);
       });
   },
 });

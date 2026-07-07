@@ -40,6 +40,7 @@ export const updateUserSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
     name: z.string().trim().min(2).max(120).optional(),
+    email: z.string().trim().email().max(255).optional(),
     role: z.enum(ROLES).optional(),
     department: z.string().trim().max(100).optional(),
     designation: z.string().trim().max(100).optional(),
@@ -147,6 +148,14 @@ export const updateUser = asyncHandler(async (req, res) => {
 
   if (req.user.role !== "super-admin") {
     delete req.validated.body.companyId;
+  }
+
+  if (req.validated.body.email) {
+    const existing = await User.exists({
+      email: req.validated.body.email,
+      _id: { $ne: req.validated.params.id },
+    });
+    if (existing) throw new AppError("Email is already registered", 409);
   }
 
   const filter =

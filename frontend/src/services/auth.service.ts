@@ -10,16 +10,14 @@ function getApiMessage(error: unknown, fallback: string) {
 }
 
 export const authService = {
-  async login(
-    role: Role,
-    email: string,
-    password: string,
-  ): Promise<{ user: User; token: string }> {
+  async login(role: Role, email: string, password: string): Promise<{ user: User; token: string }> {
     try {
       const { data } = await api.post("/auth/login", { role, email, password });
       return data.data;
     } catch (error) {
-      throw new Error(getApiMessage(error, "Unable to sign in. Check your email, password, and portal."));
+      throw new Error(
+        getApiMessage(error, "Unable to sign in. Check your email, password, and portal."),
+      );
     }
   },
   async googleLogin(role: Role, credential: string): Promise<{ user: User; token: string }> {
@@ -37,6 +35,14 @@ export const authService = {
   async me(): Promise<User> {
     const { data } = await api.get("/auth/me");
     return data.data.user;
+  },
+  async updateProfile(userId: string, profile: Partial<User>): Promise<User> {
+    try {
+      const { data } = await api.patch(`/users/${userId}`, profile);
+      return data.data;
+    } catch (error) {
+      throw new Error(getApiMessage(error, "Unable to update profile."));
+    }
   },
   async requestPasswordReset(email: string) {
     try {

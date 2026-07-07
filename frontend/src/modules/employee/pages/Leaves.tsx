@@ -62,12 +62,10 @@ export default function Leaves() {
                   try {
                     await dispatch(
                       applyLeave({
-                        employeeId: currentEmployee.id,
-                        employeeName: currentEmployee.name,
                         type: leaveType,
-                        from: String(form.get("from")),
-                        to: String(form.get("to")),
-                        reason: String(form.get("reason")),
+                        from: String(form.get("from") ?? ""),
+                        to: String(form.get("to") ?? ""),
+                        reason: String(form.get("reason") ?? "").trim(),
                       }),
                     ).unwrap();
                     toast.success("Leave request submitted");

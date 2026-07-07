@@ -21,6 +21,20 @@ import { created, success } from "../utils/http.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const nowTime = () => new Date().toTimeString().slice(0, 5);
+const minutesFromTime = (value) => {
+  const [hours, minutes] = String(value || "")
+    .split(":")
+    .map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
+const hoursBetweenTimes = (start, end) => {
+  const startMinutes = minutesFromTime(start);
+  const endMinutes = minutesFromTime(end);
+  if (startMinutes === null || endMinutes === null) return 0;
+  const diff = endMinutes >= startMinutes ? endMinutes - startMinutes : endMinutes + 24 * 60 - startMinutes;
+  return Math.round((diff / 60) * 100) / 100;
+};
 const nowStamp = () => {
   const d = new Date();
   return `${d.toISOString().slice(0, 10)} ${d.toTimeString().slice(0, 5)}`;
@@ -119,6 +133,9 @@ async function enrichCreate(req, resource, body) {
   if (resource === "attendance") {
     record.date = record.date || today();
     record.checkIn = record.checkIn || nowTime();
+    if (record.checkIn && record.checkOut) {
+      record.hoursWorked = hoursBetweenTimes(record.checkIn, record.checkOut);
+    }
     record.status = record.status || "present";
   }
   if (resource === "leaves") {
@@ -187,6 +204,21 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
     }
     if (patch.status === "completed") patch.completedAt = new Date();
     if (patch.status && patch.status !== "completed") patch.completedAt = undefined;
+  }
+  if (resource === "attendance") {
+    const existing = await config.model.findOne({
+      _id: req.validated.params.id,
+      companyId: selectedCompanyId(req),
+    });
+    if (!existing) throw new AppError("Record not found", 404);
+    const isAssignee = String(existing.employeeId) === req.user.id;
+    const canManage = ["hr", "team-manager", "super-admin"].includes(req.user.role);
+    if (!isAssignee && !canManage) {
+      throw new AppError("You do not have permission to update this attendance", 403);
+    }
+    const checkIn = patch.checkIn || existing.checkIn;
+    const checkOut = patch.checkOut || existing.checkOut;
+    if (checkIn && checkOut) patch.hoursWorked = hoursBetweenTimes(checkIn, checkOut);
   }
   const record = await config.model.findOneAndUpdate(
     { _id: req.validated.params.id, ...(config.global ? {} : { companyId: selectedCompanyId(req) }) },

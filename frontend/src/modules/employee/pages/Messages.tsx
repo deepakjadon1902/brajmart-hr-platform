@@ -8,6 +8,19 @@ import { sendMessage } from "@/store/slices/workspaceSlice";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 
+function formatMessageTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function Messages() {
   const [msg, setMsg] = useState("");
   const dispatch = useAppDispatch();
@@ -73,7 +86,7 @@ export default function Messages() {
                 >
                   <p className="font-medium">{message.subject}</p>
                   <p>{message.body}</p>
-                  <p className="mt-1 text-[11px] opacity-70">{message.sentOn}</p>
+                  <p className="mt-1 text-[11px] opacity-70">{formatMessageTime(message.sentOn)}</p>
                 </div>
               );
             })}
@@ -102,7 +115,11 @@ export default function Messages() {
               }
             }}
           >
-            <Input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Type a message..." />
+            <Input
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              placeholder="Type a message..."
+            />
             <Button type="submit" size="icon" aria-label="Send">
               <Send className="h-4 w-4" />
             </Button>

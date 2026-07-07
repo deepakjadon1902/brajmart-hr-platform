@@ -51,6 +51,15 @@ export const refreshUserThunk = createAsyncThunk("auth/me", async () => {
   return user;
 });
 
+export const updateProfileThunk = createAsyncThunk(
+  "auth/updateProfile",
+  async ({ userId, profile }: { userId: string; profile: Partial<User> }) => {
+    const user = await authService.updateProfile(userId, profile);
+    localStorage.setItem("auth_user", JSON.stringify(user));
+    return user;
+  },
+);
+
 const slice = createSlice({
   name: "auth",
   initialState,
@@ -100,6 +109,9 @@ const slice = createSlice({
         s.error = a.error.message;
       })
       .addCase(refreshUserThunk.fulfilled, (s, a) => {
+        s.user = a.payload;
+      })
+      .addCase(updateProfileThunk.fulfilled, (s, a) => {
         s.user = a.payload;
       });
   },

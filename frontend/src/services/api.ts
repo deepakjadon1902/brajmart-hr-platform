@@ -1,7 +1,11 @@
 import axios from "axios";
 
+const apiBaseURL = import.meta.env.DEV
+  ? import.meta.env.VITE_API_BASE_URL || "/api/v1"
+  : "/api/v1";
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api/v1",
+  baseURL: apiBaseURL,
   timeout: 15000,
   withCredentials: true,
 });

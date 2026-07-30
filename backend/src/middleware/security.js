@@ -8,7 +8,15 @@ import hpp from "hpp";
 import morgan from "morgan";
 import { env, isProduction } from "../config/env.js";
 
-const allowedOrigins = env.CLIENT_URL.split(",").map((origin) => origin.trim());
+const productionClientOrigins = [
+  "https://hrms.brajmart.com",
+  "https://www.hrms.brajmart.com",
+];
+
+const allowedOrigins = [
+  ...env.CLIENT_URL.split(",").map((origin) => origin.trim()),
+  ...productionClientOrigins,
+].filter(Boolean);
 
 export function applySecurity(app) {
   app.set("trust proxy", 1);

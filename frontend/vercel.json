@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://brajmart-hr-platform-2.onrender.com/api/:path*"
+      "destination": "https://brajmart-hr-platform-yg6r.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

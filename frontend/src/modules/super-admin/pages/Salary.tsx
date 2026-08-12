@@ -26,13 +26,12 @@ import { paySalary } from "@/store/slices/workspaceSlice";
 import type { Company, Employee, Payslip } from "@/types";
 import {
   buildPayslipDefaults,
-  downloadPayslipDoc,
   downloadPayslipPdf,
   formatCurrency,
   normalizePayslip,
   PayslipTemplate,
 } from "@/modules/payroll/payslip-template";
-import { Download, Eye, FileText, Plus, ReceiptText } from "lucide-react";
+import { Download, Eye, Plus, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 
 function numberField(form: FormData, key: string) {
@@ -56,10 +55,11 @@ export default function Salary() {
   const [open, setOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employees[0]?.id ?? "");
   const [preview, setPreview] = useState<Payslip | null>(null);
+  const effectiveEmployeeId = selectedEmployeeId || employees[0]?.id || "";
 
   const selectedEmployee = useMemo(
-    () => employees.find((employee) => employee.id === selectedEmployeeId) ?? employees[0],
-    [employees, selectedEmployeeId],
+    () => employees.find((employee) => employee.id === effectiveEmployeeId) ?? employees[0],
+    [employees, effectiveEmployeeId],
   );
   const defaults = useMemo(() => buildPayslipDefaults(selectedEmployee), [selectedEmployee]);
   const rows = employees.map((employee) => {
@@ -75,7 +75,9 @@ export default function Salary() {
   const savePayslip = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const employeeId = String(form.get("employeeId") || selectedEmployee?.id || "");
+    const employeeId = String(
+      form.get("employeeId") || effectiveEmployeeId || selectedEmployee?.id || "",
+    );
     const employee = employees.find((item) => item.id === employeeId);
     if (!employee) {
       toast.error("Please select an employee");
@@ -95,15 +97,15 @@ export default function Salary() {
         paySalary({
           employeeId,
           month: String(form.get("month") || defaults.month),
-          employeeNo: String(form.get("employeeNo") || "").trim(),
-          designation: String(form.get("designation") || "").trim(),
-          department: String(form.get("department") || "").trim(),
-          dateOfJoining: String(form.get("dateOfJoining") || "").trim(),
-          bankName: String(form.get("bankName") || "").trim(),
+          employeeNo: defaults.employeeNo,
+          designation: defaults.designation,
+          department: defaults.department,
+          dateOfJoining: defaults.dateOfJoining,
+          bankName: defaults.bankName,
           paidDays: numberField(form, "paidDays"),
-          bankAccount: String(form.get("bankAccount") || "").trim(),
+          bankAccount: defaults.bankAccount,
           lopDays: numberField(form, "lopDays"),
-          pan: String(form.get("pan") || "").trim(),
+          pan: defaults.pan,
           basicPay,
           houseRentAllowance,
           overtimeBonus,
@@ -131,7 +133,7 @@ export default function Salary() {
           <Label>Employee</Label>
           <Select
             name="employeeId"
-            value={selectedEmployeeId}
+            value={effectiveEmployeeId}
             onValueChange={setSelectedEmployeeId}
           >
             <SelectTrigger className="mt-1">
@@ -163,6 +165,7 @@ export default function Salary() {
             name="employeeNo"
             defaultValue={fieldDefaults.employeeNo}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -172,6 +175,7 @@ export default function Salary() {
             name="designation"
             defaultValue={fieldDefaults.designation}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -181,6 +185,7 @@ export default function Salary() {
             name="department"
             defaultValue={fieldDefaults.department}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -190,6 +195,7 @@ export default function Salary() {
             name="dateOfJoining"
             defaultValue={fieldDefaults.dateOfJoining}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -199,6 +205,7 @@ export default function Salary() {
             name="bankName"
             defaultValue={fieldDefaults.bankName}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -219,6 +226,7 @@ export default function Salary() {
             name="bankAccount"
             defaultValue={fieldDefaults.bankAccount}
             className="mt-1"
+            readOnly
           />
         </div>
         <div>
@@ -234,7 +242,7 @@ export default function Salary() {
         </div>
         <div>
           <Label htmlFor="pan">PAN</Label>
-          <Input id="pan" name="pan" defaultValue={fieldDefaults.pan} className="mt-1" />
+          <Input id="pan" name="pan" defaultValue={fieldDefaults.pan} className="mt-1" readOnly />
         </div>
         <div>
           <Label htmlFor="basicPay">Basic Pay</Label>
@@ -294,7 +302,7 @@ export default function Salary() {
     <div className="space-y-6">
       <PageHeader
         title="Salary"
-        subtitle="Create official BrajMart payslips and export them as PDF or Word documents."
+        subtitle="Create official BrajMart payslips and export them as PDF documents."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -309,7 +317,7 @@ export default function Salary() {
               </DialogHeader>
               <form key={selectedEmployee?.id} className="space-y-4" onSubmit={savePayslip}>
                 <PayslipFields employee={selectedEmployee} />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={!selectedEmployee}>
                   <ReceiptText className="mr-2 h-4 w-4" />
                   Save official payslip
                 </Button>
@@ -332,13 +340,6 @@ export default function Salary() {
                 company={company}
               />
               <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => downloadPayslipDoc(preview, undefined, company)}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  DOC
-                </Button>
                 <Button onClick={() => downloadPayslipPdf(preview, undefined, company)}>
                   <Download className="mr-2 h-4 w-4" />
                   PDF
@@ -351,10 +352,20 @@ export default function Salary() {
 
       <DataTable
         data={rows}
-        searchKeys={["name", "email", "department", "designation", "bankAccount"]}
+        searchKeys={[
+          "name",
+          "email",
+          "employeeNo",
+          "department",
+          "designation",
+          "bankName",
+          "bankAccount",
+          "pan",
+        ]}
         toolbar={<ExportButtons rows={rows} filename="salary-register" />}
         columns={[
           { key: "name", header: "Employee" },
+          { key: "employeeNo", header: "Employee No." },
           { key: "department", header: "Department" },
           { key: "designation", header: "Designation" },
           {
@@ -362,7 +373,7 @@ export default function Salary() {
             header: "Monthly CTC",
             render: (row) => formatCurrency(row.monthlyCtc ?? row.salary ?? 0),
           },
-          { key: "bankAccount", header: "Bank Account" },
+          { key: "bankName", header: "Bank" },
           { key: "latestMonth", header: "Latest Payslip" },
           {
             key: "id",
@@ -414,14 +425,6 @@ export default function Salary() {
                   <Button size="sm" variant="outline" onClick={() => setPreview(fullPayslip)}>
                     <Eye className="mr-2 h-4 w-4" />
                     View
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => downloadPayslipDoc(fullPayslip, employee, company)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    DOC
                   </Button>
                   <Button
                     size="sm"

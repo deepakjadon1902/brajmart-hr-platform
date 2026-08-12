@@ -12,11 +12,14 @@ export interface User {
   phone?: string;
   location?: string;
   manager?: string;
+  employeeNo?: string;
   salary?: number;
   baseSalary?: number;
   monthlyCtc?: number;
   annualCtc?: number;
+  bankName?: string;
   bankAccount?: string;
+  pan?: string;
   joinDate?: string;
 }
 

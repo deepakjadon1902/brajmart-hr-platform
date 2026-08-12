@@ -25,6 +25,13 @@ function employeeCode(employee?: PayslipEmployee, payslip?: Payslip) {
   );
 }
 
+function formatEmployeeDate(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-IN");
+}
+
 function numberToWords(value: number) {
   const ones = [
     "",
@@ -96,10 +103,10 @@ export function buildPayslipDefaults(employee?: PayslipEmployee): Payslip {
     employeeNo: employeeCode(employee),
     designation: employee?.designation || "",
     department: employee?.department || "",
-    dateOfJoining: employee?.joinDate || "",
-    bankName: "",
+    dateOfJoining: formatEmployeeDate(employee?.joinDate),
+    bankName: employee?.bankName || "",
     bankAccount: employee?.bankAccount || "",
-    pan: "",
+    pan: employee?.pan || "",
     paidDays: 30,
     lopDays: 0,
     basicPay,
@@ -130,8 +137,10 @@ export function normalizePayslip(payslip: Payslip, employee?: PayslipEmployee): 
     employeeNo: employeeCode(employee, payslip),
     designation: payslip.designation || employee?.designation || "",
     department: payslip.department || employee?.department || "",
-    dateOfJoining: payslip.dateOfJoining || employee?.joinDate || "",
+    dateOfJoining: payslip.dateOfJoining || formatEmployeeDate(employee?.joinDate),
+    bankName: payslip.bankName || employee?.bankName || "",
     bankAccount: payslip.bankAccount || employee?.bankAccount || "",
+    pan: payslip.pan || employee?.pan || "",
     basicPay,
     houseRentAllowance,
     overtimeBonus,
@@ -163,14 +172,6 @@ function deductionRows(payslip: Payslip): PayslipRow[] {
   ];
 }
 
-function escapeHtml(value: unknown) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function safeName(value: string) {
   return value
     .replace(/[^a-z0-9]+/gi, "-")
@@ -178,88 +179,8 @@ function safeName(value: string) {
     .toLowerCase();
 }
 
-function downloadBlob(content: BlobPart, type: string, filename: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-export function payslipFilename(payslip: Payslip, extension: "pdf" | "doc") {
-  return `payslip-${safeName(payslip.employeeName || "employee")}-${safeName(payslip.month)}.${extension}`;
-}
-
-export function downloadPayslipDoc(
-  payslipInput: Payslip,
-  employee?: PayslipEmployee,
-  company?: Company,
-) {
-  const payslip = normalizePayslip(payslipInput, employee);
-  const companyName = company?.name || "BRAJMART ECOMTECH LLP";
-  const logo = company?.logo || "/logo.jpeg";
-  const earnings = earningsRows(payslip);
-  const deductions = deductionRows(payslip);
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-body{font-family:Arial,sans-serif;color:#111;margin:36px}
-.slip{width:720px;margin:auto;border:1px solid #111;padding:22px}
-.head{display:flex;align-items:flex-start;gap:16px;text-align:center}
-.logo{width:72px;height:72px;object-fit:contain}
-.company{flex:1;font-weight:700;font-size:20px}
-.address{font-weight:400;font-size:12px;margin-top:6px}
-.title{font-weight:700;text-align:center;margin:18px 0 4px;font-size:18px}
-.month{text-align:center;font-weight:700;margin-bottom:18px}
-.section{font-weight:700;background:#f0f0f0;border:1px solid #111;padding:6px;margin-top:10px}
-table{width:100%;border-collapse:collapse;font-size:12px}
-td,th{border:1px solid #111;padding:7px;vertical-align:middle}
-th{background:#f0f0f0;text-align:left}
-.amount{text-align:right;white-space:nowrap}
-.net td{font-size:14px;font-weight:700}
-.words{border:1px solid #111;border-top:0;padding:8px;font-size:12px}
-</style>
-</head>
-<body>
-<div class="slip">
-  <div class="head">
-    <img class="logo" src="${escapeHtml(logo)}" />
-    <div class="company">${escapeHtml(companyName.toUpperCase())}<div class="address">721, Keshav Kunj, Near ISKCON Temple, Vrindavan, Uttar Pradesh 281121</div></div>
-  </div>
-  <div class="title">PAYSLIP</div>
-  <div class="month">${escapeHtml(titleMonth(payslip.month))}</div>
-  <div class="section">EMPLOYEE DETAILS</div>
-  <table>
-    <tr><td>Employee Name</td><td>${escapeHtml(payslip.employeeName)}</td><td>Employee No.</td><td>${escapeHtml(payslip.employeeNo)}</td></tr>
-    <tr><td>Designation</td><td>${escapeHtml(payslip.designation)}</td><td>Department</td><td>${escapeHtml(payslip.department)}</td></tr>
-    <tr><td>Date of Joining</td><td>${escapeHtml(payslip.dateOfJoining)}</td><td>Bank Name</td><td>${escapeHtml(payslip.bankName)}</td></tr>
-    <tr><td>Paid Days</td><td>${escapeHtml((payslip.paidDays ?? 0).toFixed(1))}</td><td>Bank Account</td><td>${escapeHtml(payslip.bankAccount)}</td></tr>
-    <tr><td>LOP Days</td><td>${escapeHtml((payslip.lopDays ?? 0).toFixed(1))}</td><td>PAN</td><td>${escapeHtml(payslip.pan)}</td></tr>
-  </table>
-  <div class="section">EMPLOYEE PAY SUMMARY</div>
-  <table>
-    <tr><th>EARNINGS</th><th>AMOUNT</th><th>DEDUCTIONS</th><th>AMOUNT</th></tr>
-    ${earnings
-      .map(
-        (earning, index) =>
-          `<tr><td>${escapeHtml(earning.label)}</td><td class="amount">${formatCurrency(earning.amount)}</td><td>${escapeHtml(
-            deductions[index]?.label || "",
-          )}</td><td class="amount">${deductions[index]?.label ? formatCurrency(deductions[index].amount) : ""}</td></tr>`,
-      )
-      .join("")}
-    <tr class="net"><td colspan="2">NET MONTHLY SALARY</td><td colspan="2" class="amount">${formatCurrency(payslip.net)}</td></tr>
-  </table>
-  <div class="words">Amount in words: ${escapeHtml(numberToWords(payslip.net))}</div>
-</div>
-</body>
-</html>`;
-  downloadBlob(html, "application/msword", payslipFilename(payslip, "doc"));
+export function payslipFilename(payslip: Payslip) {
+  return `payslip-${safeName(payslip.employeeName || "employee")}-${safeName(payslip.month)}.pdf`;
 }
 
 async function imageToDataUrl(src: string) {
@@ -374,7 +295,7 @@ export async function downloadPayslipPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(`Amount in words: ${numberToWords(payslip.net)}`, left + 6, payY + 20);
-  doc.save(payslipFilename(payslip, "pdf"));
+  doc.save(payslipFilename(payslip));
 }
 
 export function PayslipTemplate({

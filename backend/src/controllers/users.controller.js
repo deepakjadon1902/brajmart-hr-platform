@@ -27,11 +27,15 @@ export const createUserSchema = z.object({
     phone: z.string().trim().max(32).optional(),
     location: z.string().trim().max(120).optional(),
     manager: z.string().trim().max(120).optional(),
+    employeeNo: z.string().trim().max(40).optional(),
     salary: z.number().optional(),
     baseSalary: z.number().optional(),
     monthlyCtc: z.number().optional(),
     annualCtc: z.number().optional(),
+    bankName: z.string().trim().max(120).optional(),
     bankAccount: z.string().trim().max(80).optional(),
+    pan: z.string().trim().max(20).optional(),
+    joinDate: z.coerce.date().optional(),
     companyId: z.string().trim().max(40).optional(),
   }),
 });
@@ -47,11 +51,15 @@ export const updateUserSchema = z.object({
     phone: z.string().trim().max(32).optional(),
     location: z.string().trim().max(120).optional(),
     manager: z.string().trim().max(120).optional(),
+    employeeNo: z.string().trim().max(40).optional(),
     salary: z.number().optional(),
     baseSalary: z.number().optional(),
     monthlyCtc: z.number().optional(),
     annualCtc: z.number().optional(),
+    bankName: z.string().trim().max(120).optional(),
     bankAccount: z.string().trim().max(80).optional(),
+    pan: z.string().trim().max(20).optional(),
+    joinDate: z.coerce.date().optional(),
     avatar: z.string().url().optional(),
     status: z.enum(["active", "inactive", "on-leave"]).optional(),
     companyId: z.string().trim().max(40).optional(),
@@ -142,7 +150,6 @@ export const updateUser = asyncHandler(async (req, res) => {
     delete req.validated.body.baseSalary;
     delete req.validated.body.monthlyCtc;
     delete req.validated.body.annualCtc;
-    delete req.validated.body.bankAccount;
     delete req.validated.body.companyId;
   }
 

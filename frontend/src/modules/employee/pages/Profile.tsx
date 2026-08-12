@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { updateProfileThunk } from "@/store/slices/authSlice";
+import { upsertCurrentEmployee } from "@/store/slices/workspaceSlice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,8 +16,23 @@ const schema = z.object({
   name: z.string().min(2).max(80),
   email: z.string().email().max(255),
   phone: z.string().min(7).max(20).optional().or(z.literal("")),
+  employeeNo: z.string().max(40).optional().or(z.literal("")),
+  department: z.string().max(100).optional().or(z.literal("")),
   designation: z.string().max(80).optional().or(z.literal("")),
+  joinDate: z.string().optional().or(z.literal("")),
+  bankName: z.string().max(120).optional().or(z.literal("")),
+  bankAccount: z.string().max(80).optional().or(z.literal("")),
+  pan: z.string().max(20).optional().or(z.literal("")),
 });
+
+type ProfileForm = z.infer<typeof schema>;
+
+function dateInputValue(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
 
 export default function Profile() {
   const user = useAppSelector((s) => s.auth.user);
@@ -25,13 +41,19 @@ export default function Profile() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<ProfileForm>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: user?.name,
       email: user?.email,
       phone: user?.phone || "",
+      employeeNo: user?.employeeNo || "",
+      department: user?.department || "",
       designation: user?.designation || "",
+      joinDate: dateInputValue(user?.joinDate),
+      bankName: user?.bankName || "",
+      bankAccount: user?.bankAccount || "",
+      pan: user?.pan || "",
     },
   });
 
@@ -63,7 +85,10 @@ export default function Profile() {
             onSubmit={handleSubmit(async (v) => {
               if (!user?.id) return;
               try {
-                await dispatch(updateProfileThunk({ userId: user.id, profile: v })).unwrap();
+                const updated = await dispatch(
+                  updateProfileThunk({ userId: user.id, profile: v }),
+                ).unwrap();
+                dispatch(upsertCurrentEmployee({ ...updated, status: "active" }));
                 toast.success("Profile updated");
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : "Unable to update profile");
@@ -86,8 +111,32 @@ export default function Profile() {
                 <Input {...register("phone")} className="mt-1" />
               </div>
               <div>
+                <Label>Employee No.</Label>
+                <Input {...register("employeeNo")} className="mt-1" />
+              </div>
+              <div>
+                <Label>Department</Label>
+                <Input {...register("department")} className="mt-1" />
+              </div>
+              <div>
                 <Label>Designation</Label>
                 <Input {...register("designation")} className="mt-1" />
+              </div>
+              <div>
+                <Label>Date of Joining</Label>
+                <Input type="date" {...register("joinDate")} className="mt-1" />
+              </div>
+              <div>
+                <Label>Bank Name</Label>
+                <Input {...register("bankName")} className="mt-1" />
+              </div>
+              <div>
+                <Label>Bank Account</Label>
+                <Input {...register("bankAccount")} className="mt-1" />
+              </div>
+              <div>
+                <Label>PAN</Label>
+                <Input {...register("pan")} className="mt-1 uppercase" />
               </div>
             </div>
             <Button type="submit">Save changes</Button>

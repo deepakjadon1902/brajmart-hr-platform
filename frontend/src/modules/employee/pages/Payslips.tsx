@@ -7,13 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAppSelector } from "@/store";
 import type { Payslip } from "@/types";
 import {
-  downloadPayslipDoc,
   downloadPayslipPdf,
   formatCurrency,
   normalizePayslip,
   PayslipTemplate,
 } from "@/modules/payroll/payslip-template";
-import { Download, Eye, FileText } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 
 export default function Payslips() {
   const user = useAppSelector((s) => s.auth.user);
@@ -45,13 +44,6 @@ export default function Payslips() {
             <div className="space-y-4">
               <PayslipTemplate payslip={preview} employee={currentEmployee} company={company} />
               <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => downloadPayslipDoc(preview, currentEmployee, company)}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  DOC
-                </Button>
                 <Button onClick={() => downloadPayslipPdf(preview, currentEmployee, company)}>
                   <Download className="mr-2 h-4 w-4" />
                   PDF
@@ -87,14 +79,6 @@ export default function Payslips() {
                 <Button size="sm" variant="outline" onClick={() => setPreview(row)}>
                   <Eye className="mr-2 h-4 w-4" />
                   View
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => downloadPayslipDoc(row, currentEmployee, company)}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  DOC
                 </Button>
                 <Button
                   size="sm"

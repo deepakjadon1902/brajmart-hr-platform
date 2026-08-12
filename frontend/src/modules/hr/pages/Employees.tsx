@@ -9,7 +9,11 @@ import { Pencil, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { createEmployee, updateDocumentStatus, updateEmployee } from "@/store/slices/workspaceSlice";
+import {
+  createEmployee,
+  updateDocumentStatus,
+  updateEmployee,
+} from "@/store/slices/workspaceSlice";
 import {
   Dialog,
   DialogContent,
@@ -53,11 +57,14 @@ export default function Employees() {
       designation,
       location: String(form.get("location") ?? "").trim(),
       manager: String(form.get("manager") ?? "").trim(),
+      employeeNo: String(form.get("employeeNo") ?? "").trim(),
       salary: monthlyCtc,
       baseSalary: Number(form.get("baseSalary") || 0),
       monthlyCtc,
       annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
+      bankName: String(form.get("bankName") ?? "").trim(),
       bankAccount: String(form.get("bankAccount") ?? "").trim(),
+      pan: String(form.get("pan") ?? "").trim(),
       companyId: String(form.get("companyId") ?? "").trim() || undefined,
     };
 
@@ -98,7 +105,13 @@ export default function Employees() {
       )}
       <div>
         <Label htmlFor={employee ? "edit-name" : "name"}>Name</Label>
-        <Input id={employee ? "edit-name" : "name"} name="name" defaultValue={employee?.name} className="mt-1" required />
+        <Input
+          id={employee ? "edit-name" : "name"}
+          name="name"
+          defaultValue={employee?.name}
+          className="mt-1"
+          required
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-email" : "email"}>Email</Label>
@@ -120,35 +133,107 @@ export default function Employees() {
       )}
       <div>
         <Label htmlFor={employee ? "edit-department" : "department"}>Department</Label>
-        <Input id={employee ? "edit-department" : "department"} name="department" defaultValue={employee?.department} className="mt-1" required />
+        <Input
+          id={employee ? "edit-department" : "department"}
+          name="department"
+          defaultValue={employee?.department}
+          className="mt-1"
+          required
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-designation" : "designation"}>Designation</Label>
-        <Input id={employee ? "edit-designation" : "designation"} name="designation" defaultValue={employee?.designation} className="mt-1" required />
+        <Input
+          id={employee ? "edit-designation" : "designation"}
+          name="designation"
+          defaultValue={employee?.designation}
+          className="mt-1"
+          required
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-location" : "location"}>Location</Label>
-        <Input id={employee ? "edit-location" : "location"} name="location" defaultValue={employee?.location} className="mt-1" />
+        <Input
+          id={employee ? "edit-location" : "location"}
+          name="location"
+          defaultValue={employee?.location}
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-manager" : "manager"}>Manager</Label>
-        <Input id={employee ? "edit-manager" : "manager"} name="manager" defaultValue={employee?.manager} className="mt-1" />
+        <Input
+          id={employee ? "edit-manager" : "manager"}
+          name="manager"
+          defaultValue={employee?.manager}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-employeeNo" : "employeeNo"}>Employee No.</Label>
+        <Input
+          id={employee ? "edit-employeeNo" : "employeeNo"}
+          name="employeeNo"
+          defaultValue={employee?.employeeNo}
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-baseSalary" : "baseSalary"}>Base salary</Label>
-        <Input id={employee ? "edit-baseSalary" : "baseSalary"} name="baseSalary" type="number" defaultValue={employee?.baseSalary} className="mt-1" />
+        <Input
+          id={employee ? "edit-baseSalary" : "baseSalary"}
+          name="baseSalary"
+          type="number"
+          defaultValue={employee?.baseSalary}
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-monthlyCtc" : "monthlyCtc"}>Monthly CTC</Label>
-        <Input id={employee ? "edit-monthlyCtc" : "monthlyCtc"} name="monthlyCtc" type="number" defaultValue={employee?.monthlyCtc ?? employee?.salary} className="mt-1" />
+        <Input
+          id={employee ? "edit-monthlyCtc" : "monthlyCtc"}
+          name="monthlyCtc"
+          type="number"
+          defaultValue={employee?.monthlyCtc ?? employee?.salary}
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-annualCtc" : "annualCtc"}>Annual CTC</Label>
-        <Input id={employee ? "edit-annualCtc" : "annualCtc"} name="annualCtc" type="number" defaultValue={employee?.annualCtc} className="mt-1" />
+        <Input
+          id={employee ? "edit-annualCtc" : "annualCtc"}
+          name="annualCtc"
+          type="number"
+          defaultValue={employee?.annualCtc}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-bankName" : "bankName"}>Bank name</Label>
+        <Input
+          id={employee ? "edit-bankName" : "bankName"}
+          name="bankName"
+          defaultValue={employee?.bankName}
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor={employee ? "edit-bankAccount" : "bankAccount"}>Bank account</Label>
-        <Input id={employee ? "edit-bankAccount" : "bankAccount"} name="bankAccount" defaultValue={employee?.bankAccount} className="mt-1" />
+        <Input
+          id={employee ? "edit-bankAccount" : "bankAccount"}
+          name="bankAccount"
+          defaultValue={employee?.bankAccount}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={employee ? "edit-pan" : "pan"}>PAN</Label>
+        <Input
+          id={employee ? "edit-pan" : "pan"}
+          name="pan"
+          defaultValue={employee?.pan}
+          className="mt-1"
+        />
       </div>
     </div>
   );
@@ -166,14 +251,11 @@ export default function Employees() {
                 Add employee
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add employee</DialogTitle>
               </DialogHeader>
-              <form
-                className="space-y-4"
-                onSubmit={(event) => saveEmployeeDetails(event)}
-              >
+              <form className="space-y-4" onSubmit={(event) => saveEmployeeDetails(event)}>
                 <EmployeeFields />
                 <Button type="submit" className="w-full">
                   Save employee
@@ -184,7 +266,7 @@ export default function Employees() {
         }
       />
       <Dialog open={Boolean(editing)} onOpenChange={(value) => !value && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit employee</DialogTitle>
           </DialogHeader>
@@ -200,7 +282,17 @@ export default function Employees() {
       </Dialog>
       <DataTable
         data={employees}
-        searchKeys={["name", "email", "department", "designation", "location"]}
+        searchKeys={[
+          "name",
+          "email",
+          "employeeNo",
+          "department",
+          "designation",
+          "location",
+          "bankName",
+          "bankAccount",
+          "pan",
+        ]}
         toolbar={<ExportButtons rows={employees} filename="employees" />}
         columns={[
           {
@@ -224,8 +316,10 @@ export default function Employees() {
               </div>
             ),
           },
+          { key: "employeeNo", header: "Employee No." },
           { key: "department", header: "Department" },
           { key: "designation", header: "Designation" },
+          { key: "bankName", header: "Bank" },
           { key: "location", header: "Location" },
           { key: "joinDate", header: "Joined" },
           { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
@@ -247,10 +341,14 @@ export default function Employees() {
                   variant={employee.status === "inactive" ? "default" : "outline"}
                   onClick={async () => {
                     try {
-                      await dispatch(updateEmployee({ id: employee.id, status: "active" })).unwrap();
+                      await dispatch(
+                        updateEmployee({ id: employee.id, status: "active" }),
+                      ).unwrap();
                       toast.success(`${employee.name} can access the portal`);
                     } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Unable to update access");
+                      toast.error(
+                        error instanceof Error ? error.message : "Unable to update access",
+                      );
                     }
                   }}
                 >
@@ -261,10 +359,14 @@ export default function Employees() {
                   variant="ghost"
                   onClick={async () => {
                     try {
-                      await dispatch(updateEmployee({ id: employee.id, status: "inactive" })).unwrap();
+                      await dispatch(
+                        updateEmployee({ id: employee.id, status: "inactive" }),
+                      ).unwrap();
                       toast.success(`${employee.name} is blocked from login`);
                     } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Unable to update access");
+                      toast.error(
+                        error instanceof Error ? error.message : "Unable to update access",
+                      );
                     }
                   }}
                 >

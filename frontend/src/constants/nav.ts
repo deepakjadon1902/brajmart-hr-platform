@@ -66,6 +66,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { to: "/hr/shifts", label: "Shifts", icon: Workflow },
     { to: "/hr/analytics", label: "Analytics", icon: BarChart3 },
     { to: "/hr/reports", label: "Reports", icon: FileText },
+    { to: "/hr/salary", label: "Salary", icon: Wallet },
     { to: "/hr/mail", label: "Mail Center", icon: Mail },
     { to: "/hr/announcements", label: "Announcements", icon: Megaphone },
     { to: "/hr/settings", label: "Settings", icon: Settings },

@@ -77,6 +77,20 @@ export interface Payslip {
   employeeId?: string;
   employeeName?: string;
   month: string;
+  employeeNo?: string;
+  designation?: string;
+  department?: string;
+  dateOfJoining?: string;
+  bankName?: string;
+  bankAccount?: string;
+  pan?: string;
+  paidDays?: number;
+  lopDays?: number;
+  basicPay?: number;
+  houseRentAllowance?: number;
+  overtimeBonus?: number;
+  specialAllowance?: number;
+  incomeTaxTds?: number;
   gross: number;
   deductions: number;
   net: number;
@@ -107,7 +121,12 @@ export interface Client {
   name: string;
   owner: string;
   email: string;
-  domain: "IT" | "Digital Marketing" | "Social Marketing" | "Email Marketing" | "WhatsApp Marketing";
+  domain:
+    | "IT"
+    | "Digital Marketing"
+    | "Social Marketing"
+    | "Email Marketing"
+    | "WhatsApp Marketing";
   status: "continue" | "on-break" | "leave" | "new";
   addedBy: string;
   monthlyValue: number;

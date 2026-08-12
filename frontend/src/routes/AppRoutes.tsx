@@ -49,6 +49,7 @@ const HRReports = lazy(() => import("@/modules/hr/pages/Reports"));
 const HRMail = lazy(() => import("@/modules/hr/pages/MailCenter"));
 const HRAnnouncements = lazy(() => import("@/modules/hr/pages/Announcements"));
 const HRSettings = lazy(() => import("@/modules/hr/pages/Settings"));
+const HRSalary = lazy(() => import("@/modules/super-admin/pages/Salary"));
 const HRClients = lazy(() => import("@/modules/digital-marketing/pages/Clients"));
 const MailCenter = lazy(() => import("@/modules/hr/pages/MailCenter"));
 
@@ -153,6 +154,7 @@ export function AppRoutes() {
           <Route path="shifts" element={<HRShifts />} />
           <Route path="analytics" element={<HRAnalytics />} />
           <Route path="reports" element={<HRReports />} />
+          <Route path="salary" element={<HRSalary />} />
           <Route path="mail" element={<HRMail />} />
           <Route path="announcements" element={<HRAnnouncements />} />
           <Route path="settings" element={<HRSettings />} />

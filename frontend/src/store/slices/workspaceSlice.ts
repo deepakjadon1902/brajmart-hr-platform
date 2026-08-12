@@ -419,23 +419,38 @@ export const sendMessage = createAsyncThunk(
 
 export const paySalary = createAsyncThunk(
   "workspace/paySalary",
-  async (
-    { employeeId, month, deductions }: { employeeId: string; month: string; deductions?: number },
-    { getState },
-  ) => {
+  async (payslip: Partial<Payslip> & { employeeId: string; month: string }, { getState }) => {
     const state = getState() as { workspace: WorkspaceState };
-    const employee = state.workspace.employees.find((item) => item.id === employeeId);
+    const employee = state.workspace.employees.find((item) => item.id === payslip.employeeId);
     if (!employee) throw new Error("Employee not found");
-    const gross = employee.monthlyCtc ?? employee.salary ?? 0;
-    const finalDeductions = Number(deductions ?? Math.round(gross * 0.08));
+    const basicPay = Number(payslip.basicPay ?? employee.baseSalary ?? 0);
+    const houseRentAllowance = Number(payslip.houseRentAllowance ?? 0);
+    const overtimeBonus = Number(payslip.overtimeBonus ?? 0);
+    const specialAllowance = Number(payslip.specialAllowance ?? 0);
+    const incomeTaxTds = Number(payslip.incomeTaxTds ?? 0);
+    const gross = Number(
+      payslip.gross ?? basicPay + houseRentAllowance + overtimeBonus + specialAllowance,
+    );
+    const finalDeductions = Number(payslip.deductions ?? incomeTaxTds);
     const { data } = await api.post("/workspace/payslips", {
-      employeeId,
+      ...payslip,
+      employeeId: payslip.employeeId,
       employeeName: employee.name,
-      month,
+      employeeNo: payslip.employeeNo,
+      designation: payslip.designation ?? employee.designation,
+      department: payslip.department ?? employee.department,
+      dateOfJoining: payslip.dateOfJoining ?? employee.joinDate,
+      bankAccount: payslip.bankAccount ?? employee.bankAccount,
+      basicPay,
+      houseRentAllowance,
+      overtimeBonus,
+      specialAllowance,
+      incomeTaxTds,
+      month: payslip.month,
       gross,
       deductions: finalDeductions,
       net: Math.max(0, gross - finalDeductions),
-      status: "paid",
+      status: payslip.status ?? "paid",
     });
     return data.data as Payslip;
   },

@@ -189,6 +189,23 @@ function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee
   };
 }
 
+function apiErrorMessage(error: unknown, fallback: string) {
+  const response = (error as { response?: { data?: { message?: string; details?: unknown } } })
+    ?.response;
+  const message = response?.data?.message;
+  const details = response?.data?.details;
+
+  if (details && typeof details === "object" && "fieldErrors" in details) {
+    const fieldErrors = (details as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+    const firstFieldError = fieldErrors && Object.values(fieldErrors).flat()[0];
+    if (firstFieldError) return firstFieldError;
+  }
+
+  if (message) return message;
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 export const fetchEmployees = createAsyncThunk("workspace/fetchEmployees", async () => {
   const { data } = await api.get("/users", { params: { limit: 100 } });
   return (data.data as Array<Partial<Employee> & { _id?: string }>).map(normalizeEmployee);
@@ -268,36 +285,44 @@ export const fetchWorkspace = createAsyncThunk(
 export const createEmployee = createAsyncThunk(
   "workspace/createEmployee",
   async (employee: NewEmployee) => {
-    const { data } = await api.post("/users", {
-      name: employee.name,
-      email: employee.email,
-      password: employee.password,
-      role: employee.role ?? "employee",
-      department: employee.department,
-      designation: employee.designation,
-      phone: employee.phone,
-      employeeNo: employee.employeeNo,
-      salary: employee.salary ?? employee.monthlyCtc,
-      baseSalary: employee.baseSalary,
-      monthlyCtc: employee.monthlyCtc,
-      annualCtc: employee.annualCtc,
-      bankName: employee.bankName,
-      bankAccount: employee.bankAccount,
-      pan: employee.pan,
-      location: employee.location,
-      manager: employee.manager,
-      companyId: employee.companyId,
-    });
-    return normalizeEmployee(data.data);
+    try {
+      const { data } = await api.post("/users", {
+        name: employee.name,
+        email: employee.email,
+        password: employee.password,
+        role: employee.role ?? "employee",
+        department: employee.department,
+        designation: employee.designation,
+        phone: employee.phone,
+        employeeNo: employee.employeeNo,
+        salary: employee.salary ?? employee.monthlyCtc,
+        baseSalary: employee.baseSalary,
+        monthlyCtc: employee.monthlyCtc,
+        annualCtc: employee.annualCtc,
+        bankName: employee.bankName,
+        bankAccount: employee.bankAccount,
+        pan: employee.pan,
+        location: employee.location,
+        manager: employee.manager,
+        companyId: employee.companyId,
+      });
+      return normalizeEmployee(data.data);
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to save employee"));
+    }
   },
 );
 
 export const updateEmployee = createAsyncThunk(
   "workspace/updateEmployee",
   async (employee: Partial<Employee> & Pick<Employee, "id">) => {
-    const { id, ...body } = employee;
-    const { data } = await api.patch(`/users/${id}`, body);
-    return normalizeEmployee(data.data);
+    try {
+      const { id, ...body } = employee;
+      const { data } = await api.patch(`/users/${id}`, body);
+      return normalizeEmployee(data.data);
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to save employee"));
+    }
   },
 );
 

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { ExportButtons } from "@/components/common/ExportButtons";
+import { PasswordInput } from "@/components/common/PasswordInput";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Pencil, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Employee } from "@/types";
+import type { Employee, Role } from "@/types";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const roleOptions: Array<{ value: Role; label: string }> = [
+  { value: "employee", label: "Employee" },
+  { value: "hr", label: "HR" },
+  { value: "team-manager", label: "Team Manager" },
+  { value: "digital-marketing", label: "Digital Marketing" },
+];
+
+function inferRoleFromDetails(department: string, designation: string): Role {
+  return /\bhr\b|human resources/i.test(`${department} ${designation}`) ? "hr" : "employee";
+}
 
 export default function Employees() {
   const dispatch = useAppDispatch();
@@ -45,14 +57,18 @@ export default function Employees() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
-    const email = String(form.get("email") ?? "").trim();
+    const email = String(form.get("email") ?? employee?.email ?? "").trim();
     const department = String(form.get("department") ?? "").trim();
     const designation = String(form.get("designation") ?? "").trim();
     const monthlyCtc = Number(form.get("monthlyCtc") || 0);
+    const selectedRole = String(form.get("role") ?? employee?.role ?? "employee") as Role;
+    const password = String(form.get("password") ?? "").trim();
     const payload = {
       name,
       email,
-      password: String(form.get("password") ?? "").trim(),
+      ...(password ? { password } : {}),
+      role:
+        selectedRole === "employee" ? inferRoleFromDetails(department, designation) : selectedRole,
       department,
       designation,
       location: String(form.get("location") ?? "").trim(),
@@ -103,6 +119,21 @@ export default function Employees() {
           </Select>
         </div>
       )}
+      <div className="sm:col-span-2">
+        <Label>Portal role</Label>
+        <Select name="role" defaultValue={employee?.role || "employee"}>
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder="Select portal role" />
+          </SelectTrigger>
+          <SelectContent>
+            {roleOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div>
         <Label htmlFor={employee ? "edit-name" : "name"}>Name</Label>
         <Input
@@ -121,14 +152,20 @@ export default function Employees() {
           type="email"
           defaultValue={employee?.email}
           className="mt-1"
-          disabled={Boolean(employee)}
+          readOnly={Boolean(employee)}
           required
         />
       </div>
       {!employee && (
         <div>
           <Label htmlFor="password">Portal password</Label>
-          <Input id="password" name="password" type="password" className="mt-1" required />
+          <PasswordInput id="password" name="password" className="mt-1" minLength={8} required />
+        </div>
+      )}
+      {employee && (
+        <div>
+          <Label htmlFor="edit-password">New portal password</Label>
+          <PasswordInput id="edit-password" name="password" className="mt-1" minLength={8} />
         </div>
       )}
       <div>

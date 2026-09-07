@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Building2, Loader2, ShieldCheck } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { googleLoginThunk, loginThunk } from "@/store/slices/authSlice";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import type { Role } from "@/types";
 import { ROLE_META } from "@/constants/nav";
 import { authService } from "@/services/auth.service";
 import { BrandLogo } from "./BrandLogo";
+import { PasswordInput } from "./PasswordInput";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
@@ -36,10 +37,19 @@ declare global {
             callback: (response: { credential?: string }) => void;
             use_fedcm_for_prompt?: boolean;
           }) => void;
-          prompt: (callback?: (notification: { isNotDisplayed?: () => boolean; isSkippedMoment?: () => boolean }) => void) => void;
+          prompt: (
+            callback?: (notification: {
+              isNotDisplayed?: () => boolean;
+              isSkippedMoment?: () => boolean;
+            }) => void,
+          ) => void;
           renderButton: (
             parent: HTMLElement,
-            options: { theme?: "outline" | "filled_blue" | "filled_black"; size?: "large" | "medium" | "small"; width?: number },
+            options: {
+              theme?: "outline" | "filled_blue" | "filled_black";
+              size?: "large" | "medium" | "small";
+              width?: number;
+            },
           ) => void;
         };
       };
@@ -78,7 +88,6 @@ export function AuthShell({ role }: { role: Role }) {
   const routeState = location.state as RouteLocationState | null;
   const status = useAppSelector((s) => s.auth.status);
   const googleButtonRef = useRef<HTMLDivElement>(null);
-  const [show, setShow] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetStep, setResetStep] = useState<ResetStep>("email");
@@ -103,7 +112,8 @@ export function AuthShell({ role }: { role: Role }) {
 
     const setupGoogle = async () => {
       try {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || (await authService.getGoogleClientId());
+        const clientId =
+          import.meta.env.VITE_GOOGLE_CLIENT_ID || (await authService.getGoogleClientId());
         if (!clientId || !active) return;
 
         const initialize = () => {
@@ -116,7 +126,9 @@ export function AuthShell({ role }: { role: Role }) {
                 return;
               }
               try {
-                await dispatch(googleLoginThunk({ role, credential: response.credential })).unwrap();
+                await dispatch(
+                  googleLoginThunk({ role, credential: response.credential }),
+                ).unwrap();
                 toast.success(`Welcome to ${meta.title}`);
                 navigate(routeState?.from?.pathname || meta.home, { replace: true });
               } catch (e: unknown) {
@@ -291,23 +303,12 @@ export function AuthShell({ role }: { role: Role }) {
                     Forgot?
                   </button>
                 </div>
-                <div className="relative mt-1">
-                  <Input
-                    id="password"
-                    type={show ? "text" : "password"}
-                    autoComplete="current-password"
-                    {...register("password")}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShow((s) => !s)}
-                    aria-label="Toggle password visibility"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
-                  >
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+                <PasswordInput
+                  id="password"
+                  autoComplete="current-password"
+                  {...register("password")}
+                  className="mt-1"
+                />
                 {errors.password && (
                   <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>
                 )}
@@ -382,20 +383,20 @@ export function AuthShell({ role }: { role: Role }) {
                 <>
                   <div>
                     <Label htmlFor="reset-password">New password</Label>
-                    <Input
+                    <PasswordInput
                       id="reset-password"
-                      type="password"
                       value={resetPassword}
+                      minLength={8}
                       onChange={(e) => setResetPassword(e.target.value)}
                       className="mt-1"
                     />
                   </div>
                   <div>
                     <Label htmlFor="reset-confirm">Confirm password</Label>
-                    <Input
+                    <PasswordInput
                       id="reset-confirm"
-                      type="password"
                       value={resetConfirm}
+                      minLength={8}
                       onChange={(e) => setResetConfirm(e.target.value)}
                       className="mt-1"
                     />

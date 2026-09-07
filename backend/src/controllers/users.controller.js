@@ -45,6 +45,7 @@ export const updateUserSchema = z.object({
   body: z.object({
     name: z.string().trim().min(2).max(120).optional(),
     email: z.string().trim().email().max(255).optional(),
+    password: z.string().min(8).max(128).optional(),
     role: z.enum(ROLES).optional(),
     department: z.string().trim().max(100).optional(),
     designation: z.string().trim().max(100).optional(),
@@ -102,6 +103,10 @@ export const createUser = asyncHandler(async (req, res) => {
   const existing = await User.exists({ email: req.validated.body.email });
   if (existing) throw new AppError("Email is already registered", 409);
 
+  if (req.user.role !== "super-admin" && req.validated.body.role === "super-admin") {
+    throw new AppError("You do not have permission to create a super-admin user", 403);
+  }
+
   const user = new User({
     ...req.validated.body,
     companyId:
@@ -138,28 +143,32 @@ export const getUser = asyncHandler(async (req, res) => {
 export const updateUser = asyncHandler(async (req, res) => {
   const isSelf = req.validated.params.id === req.user.id;
   const canManageUsers = ["hr", "super-admin"].includes(req.user.role);
+  const { password, ...updates } = req.validated.body;
 
   if (!isSelf && !canManageUsers) {
     throw new AppError("You do not have permission to update this user", 403);
   }
 
   if (isSelf && !canManageUsers) {
-    delete req.validated.body.role;
-    delete req.validated.body.status;
-    delete req.validated.body.salary;
-    delete req.validated.body.baseSalary;
-    delete req.validated.body.monthlyCtc;
-    delete req.validated.body.annualCtc;
-    delete req.validated.body.companyId;
+    delete updates.role;
+    delete updates.status;
+    delete updates.salary;
+    delete updates.baseSalary;
+    delete updates.monthlyCtc;
+    delete updates.annualCtc;
+    delete updates.companyId;
   }
 
   if (req.user.role !== "super-admin") {
-    delete req.validated.body.companyId;
+    delete updates.companyId;
+    if (updates.role === "super-admin") {
+      throw new AppError("You do not have permission to assign super-admin access", 403);
+    }
   }
 
-  if (req.validated.body.email) {
+  if (updates.email) {
     const existing = await User.exists({
-      email: req.validated.body.email,
+      email: updates.email,
       _id: { $ne: req.validated.params.id },
     });
     if (existing) throw new AppError("Email is already registered", 409);
@@ -169,12 +178,13 @@ export const updateUser = asyncHandler(async (req, res) => {
     req.user.role === "super-admin"
       ? { _id: req.validated.params.id }
       : { _id: req.validated.params.id, companyId: req.user.companyId };
-  const user = await User.findOneAndUpdate(
-    filter,
-    { $set: req.validated.body },
-    { new: true, runValidators: true },
-  );
+  const user = await User.findOne(filter);
   if (!user) throw new AppError("User not found", 404);
+
+  Object.assign(user, updates);
+  if (password && canManageUsers) await user.setPassword(password);
+  await user.save();
+
   return success(res, user);
 });
 

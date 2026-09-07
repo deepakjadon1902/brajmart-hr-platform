@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
@@ -24,6 +24,13 @@ export default function App() {
     role === "team-manager" ||
     (role === "employee" && /\bmanager\b/i.test(designation || ""));
 
+  const refreshPortalData = useCallback(() => {
+    dispatch(refreshUserThunk());
+    if (role === "super-admin") dispatch(fetchCompanies());
+    if (canLoadEmployees) dispatch(fetchEmployees());
+    dispatch(fetchWorkspace());
+  }, [canLoadEmployees, dispatch, role]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const callbackToken = params.get("token");
@@ -43,13 +50,22 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     dispatch(hydrateWorkspaceCache({ userId, companyId }));
-    dispatch(refreshUserThunk());
-    if (role === "super-admin") dispatch(fetchCompanies());
-    if (canLoadEmployees) {
-      dispatch(fetchEmployees());
-    }
-    dispatch(fetchWorkspace());
-  }, [canLoadEmployees, companyId, dispatch, role, token, userId]);
+    refreshPortalData();
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshPortalData();
+    };
+    const refreshInterval = window.setInterval(refreshPortalData, 10000);
+
+    window.addEventListener("focus", refreshPortalData);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshPortalData);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [companyId, dispatch, refreshPortalData, token, userId]);
 
   return <AppRoutes />;
 }

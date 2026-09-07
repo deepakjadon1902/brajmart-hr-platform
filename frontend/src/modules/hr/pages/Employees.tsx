@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   createEmployee,
+  fetchEmployees,
+  fetchWorkspace,
   updateDocumentStatus,
   updateEmployee,
 } from "@/store/slices/workspaceSlice";
@@ -44,6 +46,16 @@ function inferRoleFromDetails(department: string, designation: string): Role {
   return /\bhr\b|human resources/i.test(`${department} ${designation}`) ? "hr" : "employee";
 }
 
+function toastErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (typeof error === "object" && error && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
+
 export default function Employees() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
@@ -51,6 +63,10 @@ export default function Employees() {
   const companies = useAppSelector((s) => s.company.list);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+
+  const refreshSavedData = async () => {
+    await Promise.all([dispatch(fetchEmployees()).unwrap(), dispatch(fetchWorkspace()).unwrap()]);
+  };
 
   const saveEmployeeDetails = async (event: FormEvent<HTMLFormElement>, employee?: Employee) => {
     event.preventDefault();
@@ -87,16 +103,18 @@ export default function Employees() {
     try {
       if (employee) {
         await dispatch(updateEmployee({ id: employee.id, ...payload })).unwrap();
+        await refreshSavedData();
         toast.success(`${name} updated`);
         setEditing(null);
       } else {
         await dispatch(createEmployee(payload)).unwrap();
+        await refreshSavedData();
         toast.success(`${name} added`);
         setOpen(false);
         formElement.reset();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to save employee");
+      toast.error(toastErrorMessage(error, "Unable to save employee"));
     }
   };
 
@@ -381,11 +399,10 @@ export default function Employees() {
                       await dispatch(
                         updateEmployee({ id: employee.id, status: "active" }),
                       ).unwrap();
+                      await refreshSavedData();
                       toast.success(`${employee.name} can access the portal`);
                     } catch (error) {
-                      toast.error(
-                        error instanceof Error ? error.message : "Unable to update access",
-                      );
+                      toast.error(toastErrorMessage(error, "Unable to update access"));
                     }
                   }}
                 >
@@ -399,11 +416,10 @@ export default function Employees() {
                       await dispatch(
                         updateEmployee({ id: employee.id, status: "inactive" }),
                       ).unwrap();
+                      await refreshSavedData();
                       toast.success(`${employee.name} is blocked from login`);
                     } catch (error) {
-                      toast.error(
-                        error instanceof Error ? error.message : "Unable to update access",
-                      );
+                      toast.error(toastErrorMessage(error, "Unable to update access"));
                     }
                   }}
                 >

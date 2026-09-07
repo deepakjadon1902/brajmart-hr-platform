@@ -25,11 +25,15 @@ export default function App() {
     (role === "employee" && /\bmanager\b/i.test(designation || ""));
 
   const refreshPortalData = useCallback(() => {
+    if (!userId) {
+      dispatch(refreshUserThunk());
+      return;
+    }
     dispatch(refreshUserThunk());
     if (role === "super-admin") dispatch(fetchCompanies());
     if (canLoadEmployees) dispatch(fetchEmployees());
     dispatch(fetchWorkspace());
-  }, [canLoadEmployees, dispatch, role]);
+  }, [canLoadEmployees, dispatch, role, userId]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -49,13 +53,17 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
+    if (!userId) {
+      dispatch(refreshUserThunk());
+      return;
+    }
     dispatch(hydrateWorkspaceCache({ userId, companyId }));
     refreshPortalData();
 
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") refreshPortalData();
     };
-    const refreshInterval = window.setInterval(refreshPortalData, 10000);
+    const refreshInterval = window.setInterval(refreshPortalData, 60000);
 
     window.addEventListener("focus", refreshPortalData);
     document.addEventListener("visibilitychange", refreshWhenVisible);

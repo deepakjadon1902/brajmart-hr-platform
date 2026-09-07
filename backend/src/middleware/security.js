@@ -44,7 +44,8 @@ export function applySecurity(app) {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      limit: isProduction ? 300 : 1000,
+      limit: isProduction ? 3000 : 10000,
+      skip: (req) => ["GET", "HEAD", "OPTIONS"].includes(req.method),
       standardHeaders: "draft-7",
       legacyHeaders: false,
     }),

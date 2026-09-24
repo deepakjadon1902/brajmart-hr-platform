@@ -18,6 +18,12 @@ function titleMonth(value: string) {
   return value.trim().toUpperCase();
 }
 
+function splitMonth(value: string) {
+  const parts = titleMonth(value).split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { month: parts[0] || "", year: "" };
+  return { month: parts.slice(0, -1).join(" "), year: parts[parts.length - 1] };
+}
+
 function employeeCode(employee?: PayslipEmployee, payslip?: Payslip) {
   return (
     payslip?.employeeNo ||
@@ -164,7 +170,7 @@ function earningsRows(payslip: Payslip): PayslipRow[] {
 
 function deductionRows(payslip: Payslip): PayslipRow[] {
   return [
-    { label: "Income Tax (TDS)", amount: payslip.incomeTaxTds || 0 },
+    { label: "Income Tax TDS", amount: payslip.incomeTaxTds || 0 },
     { label: "", amount: 0 },
     { label: "", amount: 0 },
     { label: "", amount: 0 },
@@ -199,102 +205,174 @@ export async function downloadPayslipPdf(
   employee?: PayslipEmployee,
   company?: Company,
 ) {
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-    import("jspdf"),
-    import("jspdf-autotable"),
-  ]);
+  const { default: jsPDF } = await import("jspdf");
   const payslip = normalizePayslip(payslipInput, employee);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const left = 48;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 40;
+  const right = pageWidth - left;
+  const brand = [36, 74, 116] as const;
+  const accent = [54, 90, 124] as const;
+  const text = [34, 34, 34] as const;
+  const muted = [75, 85, 99] as const;
+  const labelFill = [243, 246, 249] as const;
+  const rule = [217, 226, 236] as const;
   const companyName = company?.name || "BRAJMART ECOMTECH LLP";
+  const period = splitMonth(payslip.month);
+  const details = [
+    ["Employee Name", payslip.employeeName || "", "Employee No.", payslip.employeeNo || ""],
+    ["Designation", payslip.designation || "", "Department", payslip.department || ""],
+    ["Date of Joining", payslip.dateOfJoining || "", "Bank Name", payslip.bankName || ""],
+    ["Paid Days", (payslip.paidDays ?? 0).toFixed(1), "Bank Account", payslip.bankAccount || ""],
+    ["LOP Days", (payslip.lopDays ?? 0).toFixed(1), "PAN", payslip.pan || ""],
+  ];
+  const earnings = earningsRows(payslip);
+  const deductions = deductionRows(payslip);
 
-  try {
-    const logo = await imageToDataUrl(company?.logo || "/logo.jpeg");
-    doc.addImage(logo, "JPEG", left, 34, 58, 58);
-  } catch {
-    doc.rect(left, 34, 58, 58);
-  }
+  const setColor = (color: readonly number[]) => {
+    doc.setTextColor(color[0], color[1], color[2]);
+  };
+  const label = (value: string, x: number, y: number, width: number, height: number) => {
+    doc.setFillColor(...labelFill);
+    doc.rect(x, y, width, height, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    setColor(accent);
+    doc.text(value, x + 4, y + height / 2 + 3);
+  };
+  const value = (
+    content: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    align = "left",
+  ) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    setColor(text);
+    doc.text(content, align === "right" ? x + width - 4 : x + 4, y + height / 2 + 3, {
+      align: align as "left" | "right",
+      maxWidth: width - 8,
+    });
+  };
+  const row = (items: string[], y: number, widths: number[], aligns: string[] = []) => {
+    let x = left;
+    items.forEach((item, index) => {
+      const width = widths[index];
+      if (index % 2 === 0) label(item, x, y, width, 18);
+      else value(item, x, y, width, 18, aligns[index] || "left");
+      doc.setDrawColor(...rule);
+      doc.rect(x, y, width, 18);
+      x += width;
+    });
+  };
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(companyName.toUpperCase(), pageWidth / 2, 48, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(8);
+  setColor([107, 114, 128]);
   doc.text(
-    "721, Keshav Kunj, Near ISKCON Temple, Vrindavan, Uttar Pradesh 281121",
+    "This is a system-generated document and does not require a signature.",
     pageWidth / 2,
-    66,
+    pageHeight - 38,
     {
       align: "center",
     },
   );
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("PAYSLIP", pageWidth / 2, 108, { align: "center" });
-  doc.setFontSize(12);
-  doc.text(titleMonth(payslip.month), pageWidth / 2, 128, { align: "center" });
-
-  autoTable(doc, {
-    startY: 154,
-    head: [["EMPLOYEE DETAILS", "", "", ""]],
-    body: [
-      ["Employee Name", payslip.employeeName || "", "Employee No.", payslip.employeeNo || ""],
-      ["Designation", payslip.designation || "", "Department", payslip.department || ""],
-      ["Date of Joining", payslip.dateOfJoining || "", "Bank Name", payslip.bankName || ""],
-      ["Paid Days", (payslip.paidDays ?? 0).toFixed(1), "Bank Account", payslip.bankAccount || ""],
-      ["LOP Days", (payslip.lopDays ?? 0).toFixed(1), "PAN", payslip.pan || ""],
-    ],
-    theme: "grid",
-    styles: { font: "helvetica", fontSize: 9, cellPadding: 6, lineColor: 20, lineWidth: 0.6 },
-    headStyles: { fillColor: [232, 232, 232], textColor: 20, fontStyle: "bold" },
-    didParseCell: (data) => {
-      if (data.section === "head" && data.column.index === 0) data.cell.colSpan = 4;
-      if (data.section === "head" && data.column.index > 0) data.cell.text = [];
-      if (data.section === "body" && [0, 2].includes(data.column.index))
-        data.cell.styles.fontStyle = "bold";
-    },
-    margin: { left, right: left },
-  });
-
-  const finalY =
-    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 260;
-  const earnings = earningsRows(payslip);
-  const deductions = deductionRows(payslip);
-  autoTable(doc, {
-    startY: finalY + 16,
-    head: [
-      ["EMPLOYEE PAY SUMMARY", "", "", ""],
-      ["EARNINGS", "AMOUNT", "DEDUCTIONS", "AMOUNT"],
-    ],
-    body: [
-      ...earnings.map((earning, index) => [
-        earning.label,
-        formatCurrency(earning.amount),
-        deductions[index]?.label || "",
-        deductions[index]?.label ? formatCurrency(deductions[index].amount) : "",
-      ]),
-      ["NET MONTHLY SALARY", "", "", formatCurrency(payslip.net)],
-    ],
-    theme: "grid",
-    styles: { font: "helvetica", fontSize: 9, cellPadding: 6, lineColor: 20, lineWidth: 0.6 },
-    headStyles: { fillColor: [232, 232, 232], textColor: 20, fontStyle: "bold" },
-    columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
-    didParseCell: (data) => {
-      if (data.section === "head" && data.row.index === 0 && data.column.index === 0)
-        data.cell.colSpan = 4;
-      if (data.section === "head" && data.row.index === 0 && data.column.index > 0)
-        data.cell.text = [];
-      if (data.row.index === earnings.length) data.cell.styles.fontStyle = "bold";
-    },
-    margin: { left, right: left },
-  });
-
-  const payY =
-    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 430;
+  doc.setFontSize(20);
+  setColor(brand);
+  const companyParts = companyName.toUpperCase().split(" ");
+  doc.text(companyParts.slice(0, -1).join(" ") || companyName.toUpperCase(), left, 52);
+  doc.text(companyParts.at(-1) || "", left, 78);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Amount in words: ${numberToWords(payslip.net)}`, left + 6, payY + 20);
+  setColor(muted);
+  doc.text("B, Keshav Kunj, Near ISKCON Temple, Vrindavan, Uttar", left, 96);
+  doc.text("Pradesh 281121", left, 107);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  setColor(brand);
+  doc.text("PAYSLIP", right, 52, { align: "right" });
+  doc.setFontSize(12);
+  setColor(accent);
+  doc.text([period.month, period.year].filter(Boolean).join(" "), right, 80, { align: "right" });
+  doc.setFillColor(...brand);
+  doc.rect(left, 110, right - left, 2, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  setColor(brand);
+  doc.text("EMPLOYEE DETAILS", left, 143);
+  const detailWidths = [98, 160, 98, 160];
+  details.forEach((item, index) => row(item, 153 + index * 19, detailWidths));
+
+  const summaryTop = 276;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  setColor(brand);
+  doc.text("EMPLOYEE PAY SUMMARY", left, summaryTop);
+  const summaryWidths = [190, 110, 160, 56];
+  const tableTop = summaryTop + 11;
+  row(["EARNINGS", "AMOUNT", "DEDUCTIONS", "AMOUNT"], tableTop, summaryWidths, [
+    "left",
+    "right",
+    "left",
+    "right",
+  ]);
+  earnings.forEach((earning, index) => {
+    const deduction = deductions[index];
+    const y = tableTop + 18 + index * 19;
+    value(earning.label, left, y, summaryWidths[0], 18);
+    value(
+      formatCurrency(earning.amount),
+      left + summaryWidths[0],
+      y,
+      summaryWidths[1],
+      18,
+      "right",
+    );
+    value(
+      deduction?.label || "",
+      left + summaryWidths[0] + summaryWidths[1],
+      y,
+      summaryWidths[2],
+      18,
+    );
+    value(
+      deduction?.label ? formatCurrency(deduction.amount) : "",
+      left + summaryWidths[0] + summaryWidths[1] + summaryWidths[2],
+      y,
+      summaryWidths[3],
+      18,
+      "right",
+    );
+    let x = left;
+    summaryWidths.forEach((width) => {
+      doc.setDrawColor(...rule);
+      doc.rect(x, y, width, 18);
+      x += width;
+    });
+  });
+
+  const netY = tableTop + 18 + earnings.length * 19;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  setColor(brand);
+  doc.text("NET MONTHLY SALARY", left + 4, netY + 12);
+  doc.text(formatCurrency(payslip.net), right - 4, netY + 12, { align: "right" });
+  doc.setDrawColor(...rule);
+  doc.rect(left, netY, right - left, 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setColor(text);
+  doc.text(`Amount in words: ${numberToWords(payslip.net)}`, left + 4, netY + 41, {
+    maxWidth: right - left - 8,
+  });
   doc.save(payslipFilename(payslip));
 }
 
@@ -310,95 +388,96 @@ export function PayslipTemplate({
   const payslip = normalizePayslip(payslipInput, employee);
   const earnings = earningsRows(payslip);
   const deductions = deductionRows(payslip);
+  const period = splitMonth(payslip.month);
+  const details = [
+    ["Employee Name", payslip.employeeName, "Employee No.", payslip.employeeNo],
+    ["Designation", payslip.designation, "Department", payslip.department],
+    ["Date of Joining", payslip.dateOfJoining, "Bank Name", payslip.bankName],
+    ["Paid Days", (payslip.paidDays ?? 0).toFixed(1), "Bank Account", payslip.bankAccount],
+    ["LOP Days", (payslip.lopDays ?? 0).toFixed(1), "PAN", payslip.pan],
+  ];
   return (
-    <div className="mx-auto max-w-[760px] border border-slate-950 bg-white p-5 text-slate-950 shadow-sm">
-      <div className="flex items-start gap-4 text-center">
-        <img src={company?.logo || "/logo.jpeg"} alt="" className="h-16 w-16 object-contain" />
-        <div className="flex-1">
-          <div className="text-xl font-bold">
+    <div className="mx-auto max-w-[760px] bg-white p-8 text-slate-900 shadow-sm">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <div className="text-2xl font-bold leading-tight text-[#244a74]">
             {(company?.name || "BRAJMART ECOMTECH LLP").toUpperCase()}
           </div>
-          <div className="mt-1 text-xs">
-            721, Keshav Kunj, Near ISKCON Temple, Vrindavan, Uttar Pradesh 281121
+          <div className="mt-3 max-w-[280px] text-xs leading-5 text-slate-600">
+            B, Keshav Kunj, Near ISKCON Temple, Vrindavan, Uttar Pradesh 281121
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-[#244a74]">PAYSLIP</div>
+          <div className="mt-5 text-base font-bold text-[#425d7b]">
+            {[period.month, period.year].filter(Boolean).join(" ")}
           </div>
         </div>
       </div>
-      <div className="mt-5 text-center text-lg font-bold">PAYSLIP</div>
-      <div className="mb-4 text-center text-sm font-bold">{titleMonth(payslip.month)}</div>
-      <div className="border border-slate-950 bg-slate-100 px-2 py-1 text-sm font-bold">
-        EMPLOYEE DETAILS
-      </div>
-      <table className="w-full border-collapse text-xs">
+      <div className="mt-6 h-0.5 bg-[#244a74]" />
+
+      <div className="mt-8 text-sm font-bold text-[#244a74]">EMPLOYEE DETAILS</div>
+      <table className="mt-3 w-full border-collapse text-xs">
         <tbody>
-          <tr>
-            <td className="border border-slate-950 p-2 font-medium">Employee Name</td>
-            <td className="border border-slate-950 p-2">{payslip.employeeName}</td>
-            <td className="border border-slate-950 p-2 font-medium">Employee No.</td>
-            <td className="border border-slate-950 p-2">{payslip.employeeNo}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-950 p-2 font-medium">Designation</td>
-            <td className="border border-slate-950 p-2">{payslip.designation}</td>
-            <td className="border border-slate-950 p-2 font-medium">Department</td>
-            <td className="border border-slate-950 p-2">{payslip.department}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-950 p-2 font-medium">Date of Joining</td>
-            <td className="border border-slate-950 p-2">{payslip.dateOfJoining}</td>
-            <td className="border border-slate-950 p-2 font-medium">Bank Name</td>
-            <td className="border border-slate-950 p-2">{payslip.bankName}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-950 p-2 font-medium">Paid Days</td>
-            <td className="border border-slate-950 p-2">{(payslip.paidDays ?? 0).toFixed(1)}</td>
-            <td className="border border-slate-950 p-2 font-medium">Bank Account</td>
-            <td className="border border-slate-950 p-2">{payslip.bankAccount}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-950 p-2 font-medium">LOP Days</td>
-            <td className="border border-slate-950 p-2">{(payslip.lopDays ?? 0).toFixed(1)}</td>
-            <td className="border border-slate-950 p-2 font-medium">PAN</td>
-            <td className="border border-slate-950 p-2">{payslip.pan}</td>
-          </tr>
+          {details.map((item) => (
+            <tr key={`${item[0]}-${item[2]}`}>
+              <td className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 font-bold text-[#365a7c]">
+                {item[0]}
+              </td>
+              <td className="border border-[#d9e2ec] px-2 py-1.5">{item[1]}</td>
+              <td className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 font-bold text-[#365a7c]">
+                {item[2]}
+              </td>
+              <td className="border border-[#d9e2ec] px-2 py-1.5">{item[3]}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
-      <div className="mt-3 border border-slate-950 bg-slate-100 px-2 py-1 text-sm font-bold">
-        EMPLOYEE PAY SUMMARY
-      </div>
-      <table className="w-full border-collapse text-xs">
+
+      <div className="mt-8 text-sm font-bold text-[#244a74]">EMPLOYEE PAY SUMMARY</div>
+      <table className="mt-3 w-full border-collapse text-xs">
         <thead>
           <tr>
-            <th className="border border-slate-950 p-2 text-left">EARNINGS</th>
-            <th className="border border-slate-950 p-2 text-right">AMOUNT</th>
-            <th className="border border-slate-950 p-2 text-left">DEDUCTIONS</th>
-            <th className="border border-slate-950 p-2 text-right">AMOUNT</th>
+            <th className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 text-left text-[#365a7c]">
+              EARNINGS
+            </th>
+            <th className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 text-right text-[#365a7c]">
+              AMOUNT
+            </th>
+            <th className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 text-left text-[#365a7c]">
+              DEDUCTIONS
+            </th>
+            <th className="border border-[#d9e2ec] bg-[#f3f6f9] px-2 py-1.5 text-right text-[#365a7c]">
+              AMOUNT
+            </th>
           </tr>
         </thead>
         <tbody>
           {earnings.map((earning, index) => (
             <tr key={earning.label}>
-              <td className="border border-slate-950 p-2">{earning.label}</td>
-              <td className="border border-slate-950 p-2 text-right">
+              <td className="border border-[#d9e2ec] px-2 py-1.5">{earning.label}</td>
+              <td className="border border-[#d9e2ec] px-2 py-1.5 text-right">
                 {formatCurrency(earning.amount)}
               </td>
-              <td className="border border-slate-950 p-2">{deductions[index]?.label}</td>
-              <td className="border border-slate-950 p-2 text-right">
+              <td className="border border-[#d9e2ec] px-2 py-1.5">{deductions[index]?.label}</td>
+              <td className="border border-[#d9e2ec] px-2 py-1.5 text-right">
                 {deductions[index]?.label ? formatCurrency(deductions[index].amount) : ""}
               </td>
             </tr>
           ))}
-          <tr className="font-bold">
-            <td className="border border-slate-950 p-2" colSpan={2}>
+          <tr className="font-bold text-[#244a74]">
+            <td className="border border-[#d9e2ec] px-2 py-2" colSpan={3}>
               NET MONTHLY SALARY
             </td>
-            <td className="border border-slate-950 p-2 text-right" colSpan={2}>
+            <td className="border border-[#d9e2ec] px-2 py-2 text-right">
               {formatCurrency(payslip.net)}
             </td>
           </tr>
         </tbody>
       </table>
-      <div className="border border-t-0 border-slate-950 p-2 text-xs">
-        Amount in words: {numberToWords(payslip.net)}
+      <div className="mt-5 text-xs">Amount in words: {numberToWords(payslip.net)}</div>
+      <div className="mt-24 text-center text-[11px] text-slate-500">
+        This is a system-generated document and does not require a signature.
       </div>
     </div>
   );

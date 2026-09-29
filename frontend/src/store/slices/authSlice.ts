@@ -15,6 +15,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   status: "idle" | "loading" | "error";
+  sessionChecked: boolean;
   error?: string;
 }
 
@@ -31,6 +32,7 @@ const initialState: AuthState = {
   user: persisted?.user ?? null,
   token: persisted?.token ?? null,
   status: "idle",
+  sessionChecked: Boolean(persisted?.token && persisted?.user),
 };
 
 export const loginThunk = createAsyncThunk(
@@ -60,7 +62,7 @@ export const refreshUserThunk = createAsyncThunk("auth/me", async () => {
     const status = (error as { response?: { status?: number } })?.response?.status;
     if (status !== 401) throw error;
 
-    const remember = isRememberedSession();
+    const remember = isRememberedSession() || !getStoredToken();
     const res = await authService.refresh(remember);
     saveSession(res.user, res.token, remember);
     return res;
@@ -83,6 +85,7 @@ const slice = createSlice({
     logout(state) {
       state.user = null;
       state.token = null;
+      state.sessionChecked = true;
       clearSession();
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
@@ -93,6 +96,7 @@ const slice = createSlice({
     },
     setToken(state, action: PayloadAction<string>) {
       state.token = action.payload;
+      state.sessionChecked = true;
       saveToken(action.payload, true);
     },
   },
@@ -123,13 +127,21 @@ const slice = createSlice({
         s.status = "error";
         s.error = a.error.message;
       })
+      .addCase(refreshUserThunk.pending, (s) => {
+        s.status = "loading";
+        s.error = undefined;
+      })
       .addCase(refreshUserThunk.fulfilled, (s, a) => {
+        s.status = "idle";
         s.user = a.payload.user;
         s.token = a.payload.token ?? s.token;
+        s.sessionChecked = true;
       })
       .addCase(refreshUserThunk.rejected, (s) => {
+        s.status = "idle";
         s.user = null;
         s.token = null;
+        s.sessionChecked = true;
         clearSession();
       })
       .addCase(updateProfileThunk.fulfilled, (s, a) => {

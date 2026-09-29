@@ -11,10 +11,18 @@ export function ProtectedRoute({
   allow: Role | Role[];
   children: React.ReactNode;
 }) {
-  const { user, token } = useAppSelector((s) => s.auth);
+  const { user, token, status, sessionChecked } = useAppSelector((s) => s.auth);
   const location = useLocation();
   const allowedRoles = Array.isArray(allow) ? allow : [allow];
   const primaryRole = allowedRoles[0];
+
+  if (!sessionChecked || status === "loading") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
+        Restoring session...
+      </div>
+    );
+  }
 
   if (!user || !token) {
     return <Navigate to={ROLE_META[primaryRole].loginPath} state={{ from: location }} replace />;

@@ -10,9 +10,14 @@ function getApiMessage(error: unknown, fallback: string) {
 }
 
 export const authService = {
-  async login(role: Role, email: string, password: string): Promise<{ user: User; token: string }> {
+  async login(
+    role: Role,
+    email: string,
+    password: string,
+    remember?: boolean,
+  ): Promise<{ user: User; token: string }> {
     try {
-      const { data } = await api.post("/auth/login", { role, email, password });
+      const { data } = await api.post("/auth/login", { role, email, password, remember });
       return data.data;
     } catch (error) {
       throw new Error(
@@ -20,13 +25,21 @@ export const authService = {
       );
     }
   },
-  async googleLogin(role: Role, credential: string): Promise<{ user: User; token: string }> {
+  async googleLogin(
+    role: Role,
+    credential: string,
+    remember?: boolean,
+  ): Promise<{ user: User; token: string }> {
     try {
-      const { data } = await api.post("/auth/google", { role, credential });
+      const { data } = await api.post("/auth/google", { role, credential, remember });
       return data.data;
     } catch (error) {
       throw new Error(getApiMessage(error, "Unable to continue with Google."));
     }
+  },
+  async refresh(remember?: boolean): Promise<{ user: User; token: string }> {
+    const { data } = await api.post("/auth/refresh", { remember });
+    return data.data;
   },
   async getGoogleClientId(): Promise<string> {
     const { data } = await api.get("/auth/google/config");

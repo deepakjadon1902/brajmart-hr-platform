@@ -155,9 +155,18 @@ export interface EmployeeDocument {
   id: string;
   employeeId: string;
   employeeName: string;
+  companyId?: string;
   name: string;
   type: string;
+  mimeType?: string;
+  category?: "document" | "image";
   size: string;
+  originalSize?: string;
+  originalBytes?: number;
+  optimizedBytes?: number;
+  optimized?: boolean;
+  fileUrl?: string;
+  imagekitFileId?: string;
   uploadedOn: string;
   status: "submitted" | "verified" | "needs-update";
 }

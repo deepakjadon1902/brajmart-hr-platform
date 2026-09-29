@@ -3,6 +3,8 @@ import { DataTable } from "@/components/common/DataTable";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAppSelector } from "@/store";
+import { MapPin } from "lucide-react";
+import { attendanceMapUrl, formatAttendanceLocation } from "@/lib/attendanceLocation";
 
 export default function Attendance() {
   const { attendance, employees } = useAppSelector((s) => s.workspace);
@@ -17,6 +19,9 @@ export default function Attendance() {
       checkOut: record.checkOut,
       hours: record.hoursWorked,
       status: record.status,
+      location: record.location,
+      locationText: formatAttendanceLocation(record.location),
+      mapUrl: attendanceMapUrl(record.location),
     };
   });
 
@@ -25,7 +30,7 @@ export default function Attendance() {
       <PageHeader title="Attendance" subtitle="Company-wide attendance overview." />
       <DataTable
         data={rows}
-        searchKeys={["name", "dept", "status"]}
+        searchKeys={["name", "dept", "status", "locationText"]}
         toolbar={<ExportButtons rows={rows} filename="attendance" />}
         columns={[
           { key: "name", header: "Employee" },
@@ -34,6 +39,24 @@ export default function Attendance() {
           { key: "checkIn", header: "Check In" },
           { key: "checkOut", header: "Check Out" },
           { key: "hours", header: "Hours" },
+          {
+            key: "locationText",
+            header: "Location",
+            render: (r) =>
+              r.mapUrl ? (
+                <a
+                  href={r.mapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  {r.locationText}
+                </a>
+              ) : (
+                r.locationText
+              ),
+          },
           { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
         ]}
       />

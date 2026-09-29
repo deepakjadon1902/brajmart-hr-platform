@@ -31,15 +31,16 @@ export function verifyRefreshToken(token) {
   });
 }
 
-export function setRefreshCookie(res, token) {
-  res.cookie("refresh_token", token, {
+export function setRefreshCookie(res, token, { remember = true } = {}) {
+  const options = {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     domain: env.COOKIE_DOMAIN || undefined,
     path: "/api/v1/auth",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  };
+  if (remember) options.maxAge = 7 * 24 * 60 * 60 * 1000;
+  res.cookie("refresh_token", token, options);
 }
 
 export function clearRefreshCookie(res) {
@@ -52,7 +53,7 @@ export function clearRefreshCookie(res) {
   });
 }
 
-export async function issueSession(res, user) {
+export async function issueSession(res, user, { remember = true } = {}) {
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
   const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
@@ -60,6 +61,6 @@ export async function issueSession(res, user) {
     { _id: user._id },
     { $set: { refreshTokenHash, lastLoginAt: new Date() } },
   );
-  setRefreshCookie(res, refreshToken);
+  setRefreshCookie(res, refreshToken, { remember });
   return { user: user.toJSON(), token: accessToken };
 }

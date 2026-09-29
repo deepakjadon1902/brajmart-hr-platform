@@ -16,6 +16,7 @@ export const loginSchema = z.object({
     email: z.string().trim().email().max(255),
     password: z.string().min(6).max(128),
     role: z.enum(ROLES),
+    remember: z.boolean().optional(),
   }),
 });
 
@@ -23,6 +24,7 @@ export const googleLoginSchema = z.object({
   body: z.object({
     credential: z.string().min(20),
     role: z.enum(ROLES).optional(),
+    remember: z.boolean().optional(),
   }),
 });
 
@@ -65,7 +67,7 @@ export const registerSchema = z.object({
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password, role } = req.validated.body;
+  const { email, password, role, remember } = req.validated.body;
   const user = await User.findOne({ email }).select("+passwordHash");
 
   if (!user || !canAccessPortal(user, role) || !(await user.verifyPassword(password))) {
@@ -74,7 +76,7 @@ export const login = asyncHandler(async (req, res) => {
 
   if (user.status === "inactive") throw new AppError("Account is inactive", 403);
 
-  const session = await issueSession(res, user);
+  const session = await issueSession(res, user, { remember: remember === true });
   return success(res, session);
 });
 
@@ -119,7 +121,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );
 
-  const session = await issueSession(res, user);
+  const session = await issueSession(res, user, { remember: req.validated.body.remember === true });
   return success(res, session);
 });
 
@@ -260,7 +262,7 @@ export const refresh = asyncHandler(async (req, res) => {
     throw new AppError("Invalid refresh token", 401);
   }
 
-  const session = await issueSession(res, user);
+  const session = await issueSession(res, user, { remember: req.body?.remember === true });
   return success(res, session);
 });
 

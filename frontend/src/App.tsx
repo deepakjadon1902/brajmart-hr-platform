@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
@@ -14,26 +14,27 @@ export default function App() {
   const token = useAppSelector((state) => state.auth.token);
   const user = useAppSelector((state) => state.auth.user);
   const activeCompanyId = useAppSelector((state) => state.company.activeId);
-  const role = user?.role;
-  const designation = user?.designation;
   const userId = user?.id;
   const companyId = activeCompanyId || user?.companyId;
-  const canLoadEmployees =
-    role === "super-admin" ||
-    role === "hr" ||
-    role === "team-manager" ||
-    (role === "employee" && /\bmanager\b/i.test(designation || ""));
+  const attemptedSessionRestore = useRef(false);
 
-  const refreshPortalData = useCallback(() => {
-    if (!userId) {
-      dispatch(refreshUserThunk());
-      return;
+  const refreshPortalData = useCallback(async () => {
+    try {
+      const refreshedUser = await dispatch(refreshUserThunk()).unwrap();
+      const refreshedCanLoadEmployees =
+        refreshedUser.role === "super-admin" ||
+        refreshedUser.role === "hr" ||
+        refreshedUser.role === "team-manager" ||
+        (refreshedUser.role === "employee" &&
+          /\bmanager\b/i.test(refreshedUser.designation || ""));
+
+      if (refreshedUser.role === "super-admin") dispatch(fetchCompanies());
+      if (refreshedCanLoadEmployees) dispatch(fetchEmployees());
+      dispatch(fetchWorkspace());
+    } catch {
+      // The auth slice clears stale credentials; route guards handle navigation.
     }
-    dispatch(refreshUserThunk());
-    if (role === "super-admin") dispatch(fetchCompanies());
-    if (canLoadEmployees) dispatch(fetchEmployees());
-    dispatch(fetchWorkspace());
-  }, [canLoadEmployees, dispatch, role, userId]);
+  }, [dispatch]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -52,18 +53,23 @@ export default function App() {
   }, [dispatch]);
 
   useEffect(() => {
+    if (!token && !attemptedSessionRestore.current) {
+      attemptedSessionRestore.current = true;
+      void refreshPortalData();
+      return;
+    }
     if (!token) return;
     if (!userId) {
-      dispatch(refreshUserThunk());
+      void refreshPortalData();
       return;
     }
     dispatch(hydrateWorkspaceCache({ userId, companyId }));
-    refreshPortalData();
+    void refreshPortalData();
 
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refreshPortalData();
+      if (document.visibilityState === "visible") void refreshPortalData();
     };
-    const refreshInterval = window.setInterval(refreshPortalData, 60000);
+    const refreshInterval = window.setInterval(() => void refreshPortalData(), 60000);
 
     window.addEventListener("focus", refreshPortalData);
     document.addEventListener("visibilitychange", refreshWhenVisible);

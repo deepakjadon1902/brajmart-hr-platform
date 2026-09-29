@@ -87,6 +87,8 @@ export function AuthShell({ role }: { role: Role }) {
   const location = useLocation();
   const routeState = location.state as RouteLocationState | null;
   const status = useAppSelector((s) => s.auth.status);
+  const token = useAppSelector((s) => s.auth.token);
+  const user = useAppSelector((s) => s.auth.user);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -100,6 +102,7 @@ export function AuthShell({ role }: { role: Role }) {
   const {
     register,
     handleSubmit,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
@@ -127,7 +130,11 @@ export function AuthShell({ role }: { role: Role }) {
               }
               try {
                 await dispatch(
-                  googleLoginThunk({ role, credential: response.credential }),
+                  googleLoginThunk({
+                    role,
+                    credential: response.credential,
+                    remember: getValues("remember") === true,
+                  }),
                 ).unwrap();
                 toast.success(`Welcome to ${meta.title}`);
                 navigate(routeState?.from?.pathname || meta.home, { replace: true });
@@ -170,11 +177,19 @@ export function AuthShell({ role }: { role: Role }) {
     return () => {
       active = false;
     };
-  }, [dispatch, meta.home, meta.title, navigate, role, routeState?.from?.pathname]);
+  }, [dispatch, getValues, meta.home, meta.title, navigate, role, routeState?.from?.pathname]);
+
+  useEffect(() => {
+    if (token && user && user.role && ROLE_META[user.role]) {
+      navigate(routeState?.from?.pathname || ROLE_META[user.role].home, { replace: true });
+    }
+  }, [navigate, routeState?.from?.pathname, token, user]);
 
   const onSubmit = async (v: FormValues) => {
     try {
-      await dispatch(loginThunk({ role, email: v.email, password: v.password })).unwrap();
+      await dispatch(
+        loginThunk({ role, email: v.email, password: v.password, remember: v.remember === true }),
+      ).unwrap();
       toast.success(`Welcome to ${meta.title}`);
       navigate(routeState?.from?.pathname || meta.home, { replace: true });
     } catch (e: unknown) {

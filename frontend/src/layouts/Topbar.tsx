@@ -16,6 +16,7 @@ import { setLanguage } from "@/store/slices/themeSlice";
 import { logout } from "@/store/slices/authSlice";
 import { setActive } from "@/store/slices/companySlice";
 import { fetchEmployees, fetchWorkspace } from "@/store/slices/workspaceSlice";
+import { authService } from "@/services/auth.service";
 import { useNavigate } from "react-router-dom";
 import {
   Select,
@@ -35,7 +36,8 @@ export function Topbar() {
   const company = useAppSelector((s) => s.company);
   const { t, i18n } = useTranslation();
 
-  const onLogout = () => {
+  const onLogout = async () => {
+    await authService.logout();
     dispatch(logout());
     navigate("/", { replace: true });
   };

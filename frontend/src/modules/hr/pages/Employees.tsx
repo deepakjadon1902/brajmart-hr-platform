@@ -6,17 +6,29 @@ import { Button } from "@/components/ui/button";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { PasswordInput } from "@/components/common/PasswordInput";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Pencil, Plus } from "lucide-react";
+import { ExternalLink, FileText, Pencil, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   createEmployee,
+  deleteEmployee,
   fetchEmployees,
   fetchWorkspace,
   updateDocumentStatus,
   updateEmployee,
 } from "@/store/slices/workspaceSlice";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +68,20 @@ function toastErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function dateInputValue(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-IN");
+}
+
 export default function Employees() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
@@ -63,6 +89,10 @@ export default function Employees() {
   const companies = useAppSelector((s) => s.company.list);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [viewingDocumentsFor, setViewingDocumentsFor] = useState<Employee | null>(null);
+  const employeeDocuments = viewingDocumentsFor
+    ? documents.filter((document) => document.employeeId === viewingDocumentsFor.id)
+    : [];
 
   const refreshSavedData = async () => {
     await Promise.all([dispatch(fetchEmployees()).unwrap(), dispatch(fetchWorkspace()).unwrap()]);
@@ -79,10 +109,12 @@ export default function Employees() {
     const monthlyCtc = Number(form.get("monthlyCtc") || 0);
     const selectedRole = String(form.get("role") ?? employee?.role ?? "employee") as Role;
     const password = String(form.get("password") ?? "").trim();
+    const joinDate = String(form.get("joinDate") ?? "").trim();
     const payload = {
       name,
       email,
       ...(password ? { password } : {}),
+      ...(joinDate ? { joinDate } : {}),
       role:
         selectedRole === "employee" ? inferRoleFromDetails(department, designation) : selectedRole,
       department,
@@ -234,6 +266,16 @@ export default function Employees() {
         />
       </div>
       <div>
+        <Label htmlFor={employee ? "edit-joinDate" : "joinDate"}>Joining date</Label>
+        <Input
+          id={employee ? "edit-joinDate" : "joinDate"}
+          name="joinDate"
+          type="date"
+          defaultValue={dateInputValue(employee?.joinDate)}
+          className="mt-1"
+        />
+      </div>
+      <div>
         <Label htmlFor={employee ? "edit-baseSalary" : "baseSalary"}>Base salary</Label>
         <Input
           id={employee ? "edit-baseSalary" : "baseSalary"}
@@ -335,6 +377,73 @@ export default function Employees() {
           )}
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={Boolean(viewingDocumentsFor)}
+        onOpenChange={(value) => !value && setViewingDocumentsFor(null)}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{viewingDocumentsFor?.name} documents</DialogTitle>
+          </DialogHeader>
+          <DataTable
+            data={employeeDocuments}
+            pageSize={5}
+            searchKeys={["name", "type", "status"]}
+            emptyMessage="No documents uploaded for this employee yet"
+            columns={[
+              { key: "name", header: "Document" },
+              { key: "type", header: "Type" },
+              { key: "uploadedOn", header: "Uploaded" },
+              {
+                key: "status",
+                header: "Status",
+                render: (doc) => <StatusBadge status={doc.status} />,
+              },
+              {
+                key: "fileUrl",
+                header: "File",
+                render: (doc) =>
+                  doc.fileUrl ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={doc.fileUrl} target="_blank" rel="noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open
+                      </a>
+                    </Button>
+                  ) : (
+                    "-"
+                  ),
+              },
+              {
+                key: "id",
+                header: "Review",
+                render: (doc) => (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        dispatch(updateDocumentStatus({ id: doc.id, status: "verified" }))
+                      }
+                    >
+                      Verify
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        dispatch(updateDocumentStatus({ id: doc.id, status: "needs-update" }))
+                      }
+                    >
+                      Update
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </DialogContent>
+      </Dialog>
       <DataTable
         data={employees}
         searchKeys={[
@@ -376,7 +485,7 @@ export default function Employees() {
           { key: "designation", header: "Designation" },
           { key: "bankName", header: "Bank" },
           { key: "location", header: "Location" },
-          { key: "joinDate", header: "Joined" },
+          { key: "joinDate", header: "Joined", render: (e) => formatDate(e.joinDate) },
           { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
           {
             key: "id",
@@ -390,6 +499,14 @@ export default function Employees() {
                   onClick={() => setEditing(employee)}
                 >
                   <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={`View ${employee.name} documents`}
+                  onClick={() => setViewingDocumentsFor(employee)}
+                >
+                  <FileText className="h-4 w-4" />
                 </Button>
                 <Button
                   size="sm"
@@ -408,23 +525,40 @@ export default function Employees() {
                 >
                   Allow
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    try {
-                      await dispatch(
-                        updateEmployee({ id: employee.id, status: "inactive" }),
-                      ).unwrap();
-                      await refreshSavedData();
-                      toast.success(`${employee.name} is blocked from login`);
-                    } catch (error) {
-                      toast.error(toastErrorMessage(error, "Unable to update access"));
-                    }
-                  }}
-                >
-                  Block
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive">
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete employee?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes {employee.name} from the employee panel and
+                        database. They will not be able to sign in again with this portal account.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={async () => {
+                          try {
+                            await dispatch(
+                              deleteEmployee({ id: employee.id, name: employee.name }),
+                            ).unwrap();
+                            toast.success(`${employee.name} deleted`);
+                          } catch (error) {
+                            toast.error(toastErrorMessage(error, "Unable to delete employee"));
+                          }
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ),
           },
@@ -440,6 +574,21 @@ export default function Employees() {
           { key: "type", header: "Type" },
           { key: "uploadedOn", header: "Uploaded" },
           { key: "status", header: "Status", render: (doc) => <StatusBadge status={doc.status} /> },
+          {
+            key: "fileUrl",
+            header: "File",
+            render: (doc) =>
+              doc.fileUrl ? (
+                <Button asChild size="sm" variant="outline">
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open
+                  </a>
+                </Button>
+              ) : (
+                "-"
+              ),
+          },
           {
             key: "id",
             header: "Review",

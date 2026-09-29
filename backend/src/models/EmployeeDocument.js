@@ -4,6 +4,7 @@ const employeeDocumentSchema = new mongoose.Schema(
   {
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     employeeName: { type: String, required: true, trim: true },
+    companyId: { type: String, index: true },
     name: { type: String, required: true, trim: true, maxlength: 180 },
     type: { type: String, required: true, trim: true, maxlength: 80 },
     mimeType: { type: String, trim: true, maxlength: 120 },

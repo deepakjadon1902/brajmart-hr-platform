@@ -1,5 +1,14 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from "@/services/auth.service";
+import {
+  clearSession,
+  getStoredToken,
+  getStoredUser,
+  isRememberedSession,
+  saveSession,
+  saveToken,
+  saveUser,
+} from "@/services/authStorage";
 import type { Role, User } from "@/types";
 
 interface AuthState {
@@ -11,9 +20,8 @@ interface AuthState {
 
 const persisted = (() => {
   try {
-    const raw = localStorage.getItem("auth_user");
-    const token = localStorage.getItem("auth_token");
-    return token ? { user: raw ? (JSON.parse(raw) as User) : null, token } : null;
+    const token = getStoredToken();
+    return token ? { user: getStoredUser(), token } : null;
   } catch {
     return null;
   }
@@ -27,35 +35,43 @@ const initialState: AuthState = {
 
 export const loginThunk = createAsyncThunk(
   "auth/login",
-  async (p: { role: Role; email: string; password: string }) => {
-    const res = await authService.login(p.role, p.email, p.password);
-    localStorage.setItem("auth_token", res.token);
-    localStorage.setItem("auth_user", JSON.stringify(res.user));
+  async (p: { role: Role; email: string; password: string; remember?: boolean }) => {
+    const res = await authService.login(p.role, p.email, p.password, p.remember);
+    saveSession(res.user, res.token, p.remember);
     return res;
   },
 );
 
 export const googleLoginThunk = createAsyncThunk(
   "auth/googleLogin",
-  async (p: { role: Role; credential: string }) => {
-    const res = await authService.googleLogin(p.role, p.credential);
-    localStorage.setItem("auth_token", res.token);
-    localStorage.setItem("auth_user", JSON.stringify(res.user));
+  async (p: { role: Role; credential: string; remember?: boolean }) => {
+    const res = await authService.googleLogin(p.role, p.credential, p.remember);
+    saveSession(res.user, res.token, p.remember);
     return res;
   },
 );
 
 export const refreshUserThunk = createAsyncThunk("auth/me", async () => {
-  const user = await authService.me();
-  localStorage.setItem("auth_user", JSON.stringify(user));
-  return user;
+  try {
+    const user = await authService.me();
+    saveUser(user);
+    return { user, token: getStoredToken() };
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status !== 401) throw error;
+
+    const remember = isRememberedSession();
+    const res = await authService.refresh(remember);
+    saveSession(res.user, res.token, remember);
+    return res;
+  }
 });
 
 export const updateProfileThunk = createAsyncThunk(
   "auth/updateProfile",
   async ({ userId, profile }: { userId: string; profile: Partial<User> }) => {
     const user = await authService.updateProfile(userId, profile);
-    localStorage.setItem("auth_user", JSON.stringify(user));
+    saveUser(user);
     return user;
   },
 );
@@ -67,18 +83,17 @@ const slice = createSlice({
     logout(state) {
       state.user = null;
       state.token = null;
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_user");
+      clearSession();
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
-        localStorage.setItem("auth_user", JSON.stringify(state.user));
+        saveUser(state.user);
       }
     },
     setToken(state, action: PayloadAction<string>) {
       state.token = action.payload;
-      localStorage.setItem("auth_token", action.payload);
+      saveToken(action.payload, true);
     },
   },
   extraReducers: (b) => {
@@ -109,7 +124,13 @@ const slice = createSlice({
         s.error = a.error.message;
       })
       .addCase(refreshUserThunk.fulfilled, (s, a) => {
-        s.user = a.payload;
+        s.user = a.payload.user;
+        s.token = a.payload.token ?? s.token;
+      })
+      .addCase(refreshUserThunk.rejected, (s) => {
+        s.user = null;
+        s.token = null;
+        clearSession();
       })
       .addCase(updateProfileThunk.fulfilled, (s, a) => {
         s.user = a.payload;

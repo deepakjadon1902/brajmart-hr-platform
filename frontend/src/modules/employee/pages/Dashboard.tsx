@@ -10,6 +10,10 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from "rec
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { toast } from "sonner";
 import { markAttendance } from "@/store/slices/workspaceSlice";
+import {
+  formatAttendanceLocation,
+  getCurrentAttendanceLocation,
+} from "@/lib/attendanceLocation";
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -56,10 +60,24 @@ export default function Dashboard() {
     .reverse()
     .map((a) => ({ date: a.date.slice(5), hours: a.hoursWorked }));
 
-  const onCheck = () => {
+  const onCheck = async () => {
     if (!currentEmployee) return;
-    dispatch(markAttendance({ employeeId: currentEmployee.id, employeeName: currentEmployee.name }));
-    toast.success(checkedIn ? "Checked out" : `Checked in @ ${loc}`);
+    try {
+      const location = checkedIn ? todayRecord?.location : await getCurrentAttendanceLocation();
+      setLoc(formatAttendanceLocation(location));
+      const record = await dispatch(
+        markAttendance({
+          employeeId: currentEmployee.id,
+          employeeName: currentEmployee.name,
+          location,
+        }),
+      ).unwrap();
+      toast.success(
+        checkedIn ? "Checked out" : `Checked in @ ${formatAttendanceLocation(record.location)}`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update attendance");
+    }
   };
 
   return (

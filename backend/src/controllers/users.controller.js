@@ -189,15 +189,21 @@ export const updateUser = asyncHandler(async (req, res) => {
 });
 
 export const removeUser = asyncHandler(async (req, res) => {
+  if (req.validated.params.id === req.user.id) {
+    throw new AppError("You cannot delete your own account", 400);
+  }
+
   const filter =
     req.user.role === "super-admin"
       ? { _id: req.validated.params.id }
       : { _id: req.validated.params.id, companyId: req.user.companyId };
-  const user = await User.findOneAndUpdate(
-    filter,
-    { $set: { status: "inactive" } },
-    { new: true },
-  );
+  const user = await User.findOne(filter);
   if (!user) throw new AppError("User not found", 404);
-  return success(res, user);
+
+  if (req.user.role !== "super-admin" && user.role === "super-admin") {
+    throw new AppError("You do not have permission to delete a super-admin user", 403);
+  }
+
+  await user.deleteOne();
+  return success(res, { id: user.id, deleted: true });
 });

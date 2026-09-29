@@ -302,6 +302,7 @@ export const createEmployee = createAsyncThunk(
         bankName: employee.bankName,
         bankAccount: employee.bankAccount,
         pan: employee.pan,
+        joinDate: employee.joinDate,
         location: employee.location,
         manager: employee.manager,
         companyId: employee.companyId,
@@ -322,6 +323,18 @@ export const updateEmployee = createAsyncThunk(
       return normalizeEmployee(data.data);
     } catch (error) {
       throw new Error(apiErrorMessage(error, "Unable to save employee"));
+    }
+  },
+);
+
+export const deleteEmployee = createAsyncThunk(
+  "workspace/deleteEmployee",
+  async (employee: Pick<Employee, "id" | "name">) => {
+    try {
+      await api.delete(`/users/${employee.id}`);
+      return employee;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to delete employee"));
     }
   },
 );
@@ -580,6 +593,10 @@ const slice = createSlice({
         const existing = state.employees.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.employees.unshift(action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(deleteEmployee.fulfilled, (state, action) => {
+        state.employees = state.employees.filter((employee) => employee.id !== action.payload.id);
         persistWorkspaceCache(state);
       })
       .addCase(addClient.fulfilled, (state, action) => {

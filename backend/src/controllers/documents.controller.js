@@ -24,7 +24,7 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 
 export const listDocumentsSchema = z.object({
   query: z.object({
-    employeeId: z.string().optional(),
+    employeeId: objectId.optional(),
     status: z.enum(["submitted", "verified", "needs-update"]).optional(),
   }),
 });
@@ -36,14 +36,31 @@ export const updateDocumentSchema = z.object({
 
 export const imageKitAuth = asyncHandler(async (_req, res) => success(res, getImageKitAuth()));
 
+function selectedCompanyId(req) {
+  if (req.user.role !== "super-admin") return req.user.companyId;
+  const requested = String(req.headers["x-company-id"] || req.query.companyId || "").trim();
+  return requested || req.user.companyId;
+}
+
 export const listDocuments = asyncHandler(async (req, res) => {
   const canReviewDocuments = ["hr", "super-admin"].includes(req.user.role);
   const filter = {};
 
   if (canReviewDocuments) {
-    const employees = await User.find({ companyId: req.user.companyId }).select("_id");
-    filter.employeeId = { $in: employees.map((employee) => employee._id) };
-    if (req.validated.query.employeeId) filter.employeeId = req.validated.query.employeeId;
+    const companyId = selectedCompanyId(req);
+    const employees = await User.find({ companyId }).select("_id");
+    const employeeIds = employees.map((employee) => employee._id);
+
+    if (req.validated.query.employeeId) {
+      const employee = await User.findOne({
+        _id: req.validated.query.employeeId,
+        companyId,
+      }).select("_id");
+      if (!employee) throw new AppError("Employee not found", 404);
+      filter.employeeId = employee._id;
+    } else {
+      filter.$or = [{ companyId }, { employeeId: { $in: employeeIds }, companyId: { $exists: false } }];
+    }
   } else {
     filter.employeeId = req.user.id;
   }
@@ -63,7 +80,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   }
 
   const employee = await User.findById(employeeId);
-  if (!employee || employee.companyId !== req.user.companyId) {
+  if (!employee || employee.companyId !== selectedCompanyId(req)) {
     throw new AppError("Employee not found", 404);
   }
 
@@ -79,6 +96,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   const document = await EmployeeDocument.create({
     employeeId: employee.id,
     employeeName: employee.name,
+    companyId: employee.companyId,
     name: req.body.name || req.file.originalname,
     type: req.body.type || optimizedFile.mimeType,
     mimeType: optimizedFile.mimeType,
@@ -100,8 +118,9 @@ export const updateDocument = asyncHandler(async (req, res) => {
   const document = await EmployeeDocument.findById(req.validated.params.id);
   if (!document) throw new AppError("Document not found", 404);
 
+  const companyId = selectedCompanyId(req);
   const employee = await User.findById(document.employeeId).select("companyId");
-  if (!employee || employee.companyId !== req.user.companyId) {
+  if (!employee || employee.companyId !== companyId) {
     throw new AppError("Document not found", 404);
   }
 

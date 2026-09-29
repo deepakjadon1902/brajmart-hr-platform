@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { addDocument } from "@/store/slices/workspaceSlice";
-import { FileText, Upload } from "lucide-react";
+import { ExternalLink, FileText, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Documents() {
@@ -74,7 +74,7 @@ export default function Documents() {
               <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
                 <FileText className="h-5 w-5" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{d.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {d.type} - {d.size}
@@ -83,6 +83,13 @@ export default function Documents() {
                   <StatusBadge status={d.status} />
                 </div>
               </div>
+              {d.fileUrl && (
+                <Button asChild size="icon" variant="outline" aria-label={`Open ${d.name}`}>
+                  <a href={d.fileUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
             </Card>
           ))}
         </div>

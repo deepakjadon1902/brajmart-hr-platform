@@ -10,6 +10,11 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { markAttendance } from "@/store/slices/workspaceSlice";
+import {
+  attendanceMapUrl,
+  formatAttendanceLocation,
+  getCurrentAttendanceLocation,
+} from "@/lib/attendanceLocation";
 
 function formatDuration(hours = 0) {
   const totalMinutes = Math.round(hours * 60);
@@ -56,27 +61,26 @@ export default function Attendance() {
           <Button
             className="mt-4 w-full"
             size="lg"
-            onClick={() => {
+            onClick={async () => {
               if (!currentEmployee) return;
-              dispatch(
-                markAttendance({
-                  employeeId: currentEmployee.id,
-                  employeeName: currentEmployee.name,
-                }),
-              )
-                .unwrap()
-                .then((record) =>
-                  toast.success(
-                    checked
-                      ? `Checked out. Duration ${formatDuration(record.hoursWorked ?? 0)}`
-                      : "Checked in",
-                  ),
-                )
-                .catch((error) =>
-                  toast.error(
-                    error instanceof Error ? error.message : "Unable to update attendance",
-                  ),
+              try {
+                const location = checked ? todayRecord?.location : await getCurrentAttendanceLocation();
+                setLoc(formatAttendanceLocation(location));
+                const record = await dispatch(
+                  markAttendance({
+                    employeeId: currentEmployee.id,
+                    employeeName: currentEmployee.name,
+                    location,
+                  }),
+                ).unwrap();
+                toast.success(
+                  checked
+                    ? `Checked out. Duration ${formatDuration(record.hoursWorked ?? 0)}`
+                    : `Checked in @ ${formatAttendanceLocation(record.location)}`,
                 );
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Unable to update attendance");
+              }
             }}
           >
             {checked ? (
@@ -119,6 +123,27 @@ export default function Attendance() {
             key: "hoursWorked",
             header: "Hours",
             render: (r) => formatDuration(r.hoursWorked ?? 0),
+          },
+          {
+            key: "location",
+            header: "Location",
+            render: (r) => {
+              const text = formatAttendanceLocation(r.location);
+              const mapUrl = attendanceMapUrl(r.location);
+              return mapUrl ? (
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  {text}
+                </a>
+              ) : (
+                text
+              );
+            },
           },
           { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
         ]}

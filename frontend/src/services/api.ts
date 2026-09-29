@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getStoredToken } from "./authStorage";
 
 const apiBaseURL = import.meta.env.DEV
   ? import.meta.env.VITE_API_BASE_URL || "/api/v1"
@@ -11,7 +12,7 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("auth_token");
+  const token = getStoredToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const activeCompany = localStorage.getItem("active_company");
   if (activeCompany) config.headers["X-Company-Id"] = activeCompany;

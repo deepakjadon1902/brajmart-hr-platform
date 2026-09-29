@@ -102,7 +102,6 @@ export function AuthShell({ role }: { role: Role }) {
   const {
     register,
     handleSubmit,
-    getValues,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
@@ -133,7 +132,7 @@ export function AuthShell({ role }: { role: Role }) {
                   googleLoginThunk({
                     role,
                     credential: response.credential,
-                    remember: getValues("remember") === true,
+                    remember: true,
                   }),
                 ).unwrap();
                 toast.success(`Welcome to ${meta.title}`);
@@ -177,7 +176,7 @@ export function AuthShell({ role }: { role: Role }) {
     return () => {
       active = false;
     };
-  }, [dispatch, getValues, meta.home, meta.title, navigate, role, routeState?.from?.pathname]);
+  }, [dispatch, meta.home, meta.title, navigate, role, routeState?.from?.pathname]);
 
   useEffect(() => {
     if (token && user && user.role && ROLE_META[user.role]) {

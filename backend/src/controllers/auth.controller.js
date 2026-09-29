@@ -121,7 +121,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );
 
-  const session = await issueSession(res, user, { remember: req.validated.body.remember === true });
+  const session = await issueSession(res, user, { remember: true });
   return success(res, session);
 });
 

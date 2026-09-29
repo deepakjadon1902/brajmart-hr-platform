@@ -1,23 +1,7 @@
 import { User } from "../models/User.js";
 
 const permanentAccounts = [
-  [
-    "BrajMart Employee",
-    "employee@brajmart.com",
-    "employee",
-    "Operations",
-    "Employee",
-    "@Employee108#",
-  ],
   ["BrajMart HR", "hr@brajmart.com", "hr", "People", "HR Administrator", "@RadheKrishna108#"],
-  [
-    "BrajMart Team Manager",
-    "manager@brajmart.com",
-    "team-manager",
-    "Operations",
-    "Team Manager",
-    "@Govind108#",
-  ],
   [
     "Anish BrajMart",
     "anish@brajmart.com",
@@ -26,17 +10,12 @@ const permanentAccounts = [
     "Super Administrator",
     "@HareKrishna108#",
   ],
-  [
-    "BrajMart Digital Marketing",
-    "marketing@brajmart.com",
-    "digital-marketing",
-    "Marketing",
-    "Digital Marketing",
-    "@Marketing108#",
-  ],
 ];
 
 const obsoleteDemoEmails = [
+  "employee@brajmart.com",
+  "manager@brajmart.com",
+  "marketing@brajmart.com",
   "marketing@demo.com",
   "admin@demo.com",
   "manager@demo.com",

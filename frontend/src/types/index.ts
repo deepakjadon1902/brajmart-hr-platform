@@ -12,6 +12,7 @@ export interface User {
   phone?: string;
   location?: string;
   manager?: string;
+  teamId?: string;
   employeeNo?: string;
   salary?: number;
   baseSalary?: number;
@@ -36,6 +37,39 @@ export interface Employee extends User {
   password?: string;
 }
 
+export type TeamMember = Pick<
+  Employee,
+  | "id"
+  | "name"
+  | "email"
+  | "role"
+  | "companyId"
+  | "department"
+  | "designation"
+  | "status"
+  | "teamId"
+  | "avatar"
+>;
+export interface Team {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string;
+  managerId: string;
+  managerName: string;
+  managerEmail: string;
+  members: TeamMember[];
+}
+export interface TeamCandidate extends TeamMember {
+  teamName: string;
+}
+export interface TeamInput {
+  name: string;
+  description: string;
+  managerId?: string;
+  memberIds: string[];
+}
+
 export interface AttendanceRecord {
   id: string;
   employeeId?: string;
@@ -56,6 +90,9 @@ export interface LeaveRequest {
   reason: string;
   status: "pending" | "approved" | "rejected";
   appliedOn: string;
+  reviewedById?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
   employeeId?: string;
   employeeName?: string;
 }
@@ -112,6 +149,11 @@ export interface Asset {
 
 export interface Notification {
   id: string;
+  employeeId?: string;
+  companyId?: string;
+  taskId?: string;
+  event?: "task-assigned" | "task-due-day" | "task-due-hour" | "task-overdue";
+  deadlineAt?: string;
   title: string;
   body: string;
   time: string;
@@ -204,6 +246,7 @@ export type TaskStatus = "not-started" | "in-progress" | "completed";
 
 export interface Task {
   id: string;
+  companyId: string;
   employeeId: string;
   employeeName: string;
   title: string;
@@ -211,6 +254,8 @@ export interface Task {
   priority: "low" | "medium" | "high";
   status: TaskStatus;
   dueDate?: string;
+  dueTime?: string;
+  dueAt?: string;
   assignedById: string;
   assignedByName: string;
   completedAt?: string;

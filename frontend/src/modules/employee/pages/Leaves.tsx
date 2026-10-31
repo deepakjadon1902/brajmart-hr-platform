@@ -26,10 +26,12 @@ import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { applyLeave } from "@/store/slices/workspaceSlice";
 import type { LeaveRequest } from "@/types";
+import { useTeamActivityRefresh } from "@/modules/teams/useTeamActivityRefresh";
 
 export default function Leaves() {
   const [open, setOpen] = useState(false);
   const [leaveType, setLeaveType] = useState<LeaveRequest["type"]>("casual");
+  useTeamActivityRefresh();
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { leaves, employees } = useAppSelector((s) => s.workspace);
@@ -58,7 +60,8 @@ export default function Leaves() {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (!currentEmployee) return;
-                  const form = new FormData(e.currentTarget);
+                  const formElement = e.currentTarget;
+                  const form = new FormData(formElement);
                   try {
                     await dispatch(
                       applyLeave({
@@ -69,8 +72,8 @@ export default function Leaves() {
                       }),
                     ).unwrap();
                     toast.success("Leave request submitted");
+                    formElement.reset();
                     setOpen(false);
-                    e.currentTarget.reset();
                   } catch (error) {
                     toast.error(error instanceof Error ? error.message : "Unable to submit leave");
                   }

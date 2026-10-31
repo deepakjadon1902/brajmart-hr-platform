@@ -8,6 +8,9 @@ import {
 } from "@/store/slices/workspaceSlice";
 import { refreshUserThunk, setToken } from "@/store/slices/authSlice";
 import { fetchCompanies } from "@/store/slices/companySlice";
+import { TaskNotifications } from "@/components/common/TaskNotifications";
+import { Toaster } from "@/components/ui/sonner";
+import { TeamSync } from "@/components/common/TeamSync";
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -20,13 +23,12 @@ export default function App() {
 
   const refreshPortalData = useCallback(async () => {
     try {
-      const refreshedUser = await dispatch(refreshUserThunk()).unwrap();
+      const { user: refreshedUser } = await dispatch(refreshUserThunk()).unwrap();
       const refreshedCanLoadEmployees =
         refreshedUser.role === "super-admin" ||
         refreshedUser.role === "hr" ||
         refreshedUser.role === "team-manager" ||
-        (refreshedUser.role === "employee" &&
-          /\bmanager\b/i.test(refreshedUser.designation || ""));
+        (refreshedUser.role === "employee" && /\bmanager\b/i.test(refreshedUser.designation || ""));
 
       if (refreshedUser.role === "super-admin") dispatch(fetchCompanies());
       if (refreshedCanLoadEmployees) dispatch(fetchEmployees());
@@ -81,5 +83,12 @@ export default function App() {
     };
   }, [companyId, dispatch, refreshPortalData, token, userId]);
 
-  return <AppRoutes />;
+  return (
+    <>
+      <TaskNotifications />
+      <TeamSync />
+      <AppRoutes />
+      <Toaster position="top-right" richColors />
+    </>
+  );
 }

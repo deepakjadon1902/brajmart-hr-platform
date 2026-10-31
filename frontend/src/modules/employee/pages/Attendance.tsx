@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { markAttendance } from "@/store/slices/workspaceSlice";
+import { todayInIndia } from "@/utils/date";
 import {
   attendanceMapUrl,
   formatAttendanceLocation,
@@ -33,9 +34,7 @@ export default function Attendance() {
   const employeeAttendance = attendance.filter(
     (record) => record.employeeId === currentEmployee?.id,
   );
-  const todayRecord = employeeAttendance.find(
-    (record) => record.date === new Date().toISOString().slice(0, 10),
-  );
+  const todayRecord = employeeAttendance.find((record) => record.date === todayInIndia());
   const checked = Boolean(todayRecord?.checkIn && !todayRecord?.checkOut);
 
   useEffect(() => {
@@ -64,7 +63,9 @@ export default function Attendance() {
             onClick={async () => {
               if (!currentEmployee) return;
               try {
-                const location = checked ? todayRecord?.location : await getCurrentAttendanceLocation();
+                const location = checked
+                  ? todayRecord?.location
+                  : await getCurrentAttendanceLocation();
                 setLoc(formatAttendanceLocation(location));
                 const record = await dispatch(
                   markAttendance({

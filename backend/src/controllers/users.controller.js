@@ -3,6 +3,8 @@ import { User, ROLES } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { created, success } from "../utils/http.js";
+import { isPeopleAdmin, isTeamManager, managedMemberIds, canManageMember, publicMemberFields } from "../services/teams.service.js";
+import { isManagerDesignation } from "../utils/portalAccess.js";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 
@@ -78,6 +80,7 @@ function selectedCompanyId(req) {
 export const listUsers = asyncHandler(async (req, res) => {
   const { role, search, page, limit } = req.validated.query;
   const filter = { companyId: selectedCompanyId(req) };
+  if (isTeamManager(req.user)) filter._id = { $in: [req.user._id, ...await managedMemberIds(req.user, filter.companyId)] };
   if (role) filter.role = role;
   if (search) {
     filter.$or = [
@@ -90,13 +93,15 @@ export const listUsers = asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     User.find(filter)
+      .select(isTeamManager(req.user) ? publicMemberFields : "")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
     User.countDocuments(filter),
   ]);
 
-  return success(res, items, 200, { page, limit, total, pages: Math.ceil(total / limit) });
+  const visible = items.map((user) => user.id === req.user.id ? req.user : user);
+  return success(res, visible, 200, { page, limit, total, pages: Math.ceil(total / limit) });
 });
 
 export const createUser = asyncHandler(async (req, res) => {
@@ -126,7 +131,7 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 
 export const getUser = asyncHandler(async (req, res) => {
-  const canReadTeam = ["hr", "team-manager", "super-admin"].includes(req.user.role);
+  const canReadTeam = await canManageMember(req.user, req.validated.params.id);
   if (req.validated.params.id !== req.user.id && !canReadTeam) {
     throw new AppError("You do not have permission to view this user", 403);
   }
@@ -135,7 +140,7 @@ export const getUser = asyncHandler(async (req, res) => {
     req.user.role === "super-admin"
       ? { _id: req.validated.params.id }
       : { _id: req.validated.params.id, companyId: req.user.companyId };
-  const user = await User.findOne(filter);
+  const user = await User.findOne(filter).select(!isPeopleAdmin(req.user) && req.validated.params.id !== req.user.id ? publicMemberFields : "");
   if (!user) throw new AppError("User not found", 404);
   return success(res, user);
 });
@@ -150,6 +155,9 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
 
   if (isSelf && !canManageUsers) {
+    if (updates.designation !== undefined && isManagerDesignation({ designation: updates.designation }) !== isManagerDesignation(req.user)) {
+      throw new AppError("Only HR can grant or remove team manager access", 403);
+    }
     delete updates.role;
     delete updates.status;
     delete updates.salary;
@@ -181,6 +189,9 @@ export const updateUser = asyncHandler(async (req, res) => {
   const user = await User.findOne(filter);
   if (!user) throw new AppError("User not found", 404);
 
+  if ((updates.companyId && updates.companyId !== user.companyId) || (updates.role && updates.role !== "employee")) {
+    user.teamId = undefined;
+  }
   Object.assign(user, updates);
   if (password && canManageUsers) await user.setPassword(password);
   await user.save();

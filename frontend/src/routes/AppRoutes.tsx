@@ -19,6 +19,7 @@ const EmpProfile = lazy(() => import("@/modules/employee/pages/Profile"));
 const EmpAttendance = lazy(() => import("@/modules/employee/pages/Attendance"));
 const EmpLeaves = lazy(() => import("@/modules/employee/pages/Leaves"));
 const EmpTasks = lazy(() => import("@/modules/employee/pages/Tasks"));
+const EmpTeam = lazy(() => import("@/modules/employee/pages/Team"));
 const EmpHolidays = lazy(() => import("@/modules/employee/pages/Holidays"));
 const EmpShifts = lazy(() => import("@/modules/employee/pages/Shifts"));
 const EmpPayslips = lazy(() => import("@/modules/employee/pages/Payslips"));
@@ -58,6 +59,7 @@ const TMDashboard = lazy(() => import("@/modules/team-manager/pages/Dashboard"))
 const TMAttendance = lazy(() => import("@/modules/team-manager/pages/Attendance"));
 const TMLeaves = lazy(() => import("@/modules/team-manager/pages/Leaves"));
 const TMTasks = lazy(() => import("@/modules/team-manager/pages/Tasks"));
+const TMTeams = lazy(() => import("@/modules/team-manager/pages/Teams"));
 const TMPerformance = lazy(() => import("@/modules/team-manager/pages/Performance"));
 const TMAnalytics = lazy(() => import("@/modules/team-manager/pages/Analytics"));
 const TMSettings = lazy(() => import("@/modules/team-manager/pages/Settings"));
@@ -116,6 +118,7 @@ export function AppRoutes() {
           <Route path="attendance" element={<EmpAttendance />} />
           <Route path="leaves" element={<EmpLeaves />} />
           <Route path="tasks" element={<EmpTasks />} />
+          <Route path="team" element={<EmpTeam />} />
           <Route path="holidays" element={<EmpHolidays />} />
           <Route path="shifts" element={<EmpShifts />} />
           <Route path="payslips" element={<EmpPayslips />} />
@@ -174,6 +177,7 @@ export function AppRoutes() {
           <Route path="attendance" element={<TMAttendance />} />
           <Route path="leaves" element={<TMLeaves />} />
           <Route path="tasks" element={<TMTasks />} />
+          <Route path="teams" element={<TMTeams />} />
           <Route path="performance" element={<TMPerformance />} />
           <Route path="analytics" element={<TMAnalytics />} />
           <Route path="settings" element={<TMSettings />} />

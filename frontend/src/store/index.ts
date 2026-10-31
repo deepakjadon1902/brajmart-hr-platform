@@ -5,9 +5,10 @@ import theme from "./slices/themeSlice";
 import company from "./slices/companySlice";
 import ui from "./slices/uiSlice";
 import workspace from "./slices/workspaceSlice";
+import teams from "./slices/teamsSlice";
 
 export const store = configureStore({
-  reducer: { auth, theme, company, ui, workspace },
+  reducer: { auth, theme, company, ui, workspace, teams },
 });
 
 export type RootState = ReturnType<typeof store.getState>;

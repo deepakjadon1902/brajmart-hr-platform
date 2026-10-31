@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { TeamSummary } from "@/modules/teams/TeamSummary";
 
 const schema = z.object({
   name: z.string().min(2).max(80),
@@ -60,6 +61,7 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Profile" subtitle="Manage your personal information." />
+      <TeamSummary />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-6 text-center shadow-soft">
           <Avatar className="mx-auto h-24 w-24">

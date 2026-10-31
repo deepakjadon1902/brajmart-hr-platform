@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true, maxlength: 32 },
     location: { type: String, trim: true, maxlength: 120 },
     manager: { type: String, trim: true, maxlength: 120 },
+    teamId: { type: mongoose.Schema.Types.ObjectId, ref: "Team", index: true },
     employeeNo: { type: String, trim: true, maxlength: 40 },
     salary: { type: Number, min: 0, default: 0 },
     baseSalary: { type: Number, min: 0, default: 0 },

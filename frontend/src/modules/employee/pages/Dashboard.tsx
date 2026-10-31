@@ -10,17 +10,15 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from "rec
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { toast } from "sonner";
 import { markAttendance } from "@/store/slices/workspaceSlice";
-import {
-  formatAttendanceLocation,
-  getCurrentAttendanceLocation,
-} from "@/lib/attendanceLocation";
+import { TeamSummary } from "@/modules/teams/TeamSummary";
+import { todayInIndia } from "@/utils/date";
+import { formatAttendanceLocation, getCurrentAttendanceLocation } from "@/lib/attendanceLocation";
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
   const dispatch = useAppDispatch();
-  const { attendance, employees, holidays, leaves, notifications, payslips, tasks } = useAppSelector(
-    (s) => s.workspace,
-  );
+  const { attendance, employees, holidays, leaves, notifications, payslips, tasks } =
+    useAppSelector((s) => s.workspace);
   const [time, setTime] = useState(new Date());
   const [loc, setLoc] = useState<string>("Detecting...");
   const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
@@ -29,9 +27,7 @@ export default function Dashboard() {
   );
   const employeeLeaves = leaves.filter((leave) => leave.employeeId === currentEmployee?.id);
   const employeeTasks = tasks.filter((task) => task.employeeId === currentEmployee?.id);
-  const todayRecord = employeeAttendance.find(
-    (record) => record.date === new Date().toISOString().slice(0, 10),
-  );
+  const todayRecord = employeeAttendance.find((record) => record.date === todayInIndia());
   const checkedIn = Boolean(todayRecord?.checkIn && !todayRecord?.checkOut);
   const totalHours = Math.round(
     employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0),
@@ -86,6 +82,7 @@ export default function Dashboard() {
         title={`Welcome back, ${user?.name?.split(" ")[0] ?? "there"}`}
         subtitle="Here's a snapshot of your workspace today."
       />
+      <TeamSummary />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

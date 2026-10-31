@@ -2,6 +2,11 @@ import { TaskWorkspace } from "@/modules/tasks/TaskWorkspace";
 
 export default function P() {
   return (
-    <TaskWorkspace title="Tasks" subtitle="Plan and track your team's work." canAssign />
+    <TaskWorkspace
+      title="Team Tasks"
+      subtitle="Assign work to your team members and track their progress."
+      canAssign
+      teamOnly
+    />
   );
 }

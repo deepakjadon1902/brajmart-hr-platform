@@ -1,4 +1,4 @@
-import { Bell, Globe, LogOut, Menu, Search } from "lucide-react";
+import { Globe, LogOut, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import { BrandLogo } from "@/components/common/BrandLogo";
+import { NotificationBell } from "@/components/common/NotificationBell";
 
 export function Topbar() {
   const dispatch = useAppDispatch();
@@ -107,10 +108,7 @@ export function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-        </Button>
+        <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

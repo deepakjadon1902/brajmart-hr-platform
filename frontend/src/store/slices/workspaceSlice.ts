@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/services/api";
+import { todayInIndia, timeInIndia } from "@/utils/date";
 import type {
   Asset,
   AttendanceRecord,
@@ -30,6 +31,8 @@ interface WorkspaceState {
   payslips: Payslip[];
   assets: Asset[];
   notifications: Notification[];
+  notificationsRequestId: string | null;
+  notificationsError: string | null;
   clients: Client[];
   invoices: Invoice[];
   documents: EmployeeDocument[];
@@ -37,6 +40,7 @@ interface WorkspaceState {
   roleAssignments: RoleAssignment[];
   permissionGrants: PermissionGrant[];
   tasks: Task[];
+  tasksRequestId: string | null;
 }
 
 type RootLikeState = {
@@ -47,8 +51,8 @@ type RootLikeState = {
 
 const workspaceCachePrefix = "workspace_cache_v2";
 
-const today = () => new Date().toISOString().slice(0, 10);
-const nowTime = () => new Date().toTimeString().slice(0, 5);
+const today = todayInIndia;
+const nowTime = timeInIndia;
 const minutesFromTime = (value?: string) => {
   const [hours, minutes] = String(value || "")
     .split(":")
@@ -78,6 +82,8 @@ const defaultState: WorkspaceState = {
   payslips: [],
   assets: [],
   notifications: [],
+  notificationsRequestId: null,
+  notificationsError: null,
   clients: [],
   invoices: [],
   documents: [],
@@ -85,6 +91,7 @@ const defaultState: WorkspaceState = {
   roleAssignments: [],
   permissionGrants: [],
   tasks: [],
+  tasksRequestId: null,
 };
 
 function workspaceCacheKey(userId?: string, companyId?: string) {
@@ -153,14 +160,12 @@ const resources = [
   "shifts",
   "payslips",
   "assets",
-  "notifications",
   "clients",
   "invoices",
   "documents",
   "messages",
   "roleAssignments",
   "permissionGrants",
-  "tasks",
 ] as const;
 
 function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee {
@@ -178,6 +183,7 @@ function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee
     status: item.status ?? "active",
     location: item.location,
     manager: item.manager,
+    teamId: item.teamId,
     employeeNo: item.employeeNo,
     salary: item.salary,
     baseSalary: item.baseSalary,
@@ -208,8 +214,59 @@ function apiErrorMessage(error: unknown, fallback: string) {
 
 export const fetchEmployees = createAsyncThunk("workspace/fetchEmployees", async () => {
   const { data } = await api.get("/users", { params: { limit: 100 } });
-  return (data.data as Array<Partial<Employee> & { _id?: string }>).map(normalizeEmployee);
+  const otherPages = await Promise.all(
+    Array.from({ length: Math.max(0, (data.meta?.pages ?? 1) - 1) }, (_, index) =>
+      api.get("/users", { params: { limit: 100, page: index + 2 } }),
+    ),
+  );
+  const employees = [data.data, ...otherPages.map((response) => response.data.data)].flat();
+  return (employees as Array<Partial<Employee> & { _id?: string }>).map(normalizeEmployee);
 });
+
+export const fetchTasks = createAsyncThunk("workspace/fetchTasks", async () => {
+  try {
+    const { data } = await api.get("/workspace/tasks");
+    return data.data as Task[];
+  } catch (error) {
+    throw new Error(apiErrorMessage(error, "Unable to load tasks"));
+  }
+});
+
+export const fetchTeamActivity = createAsyncThunk("workspace/fetchTeamActivity", async () => {
+  try {
+    const [attendance, leaves] = await Promise.all([
+      api.get("/workspace/attendance"),
+      api.get("/workspace/leaves"),
+    ]);
+    return {
+      attendance: attendance.data.data as AttendanceRecord[],
+      leaves: leaves.data.data as LeaveRequest[],
+    };
+  } catch (error) {
+    throw new Error(apiErrorMessage(error, "Unable to load team activity"));
+  }
+});
+
+export const fetchNotifications = createAsyncThunk("workspace/fetchNotifications", async () => {
+  try {
+    const { data } = await api.get("/workspace/notifications");
+    return data.data as Notification[];
+  } catch (error) {
+    throw new Error(apiErrorMessage(error, "Unable to load notifications"));
+  }
+});
+
+export const markNotificationRead = createAsyncThunk(
+  "workspace/markNotificationRead",
+  async (id: string) => {
+    try {
+      const { data } = await api.patch(`/workspace/notifications/${id}`, { read: true });
+      return data.data as Notification;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to mark notification as read"));
+    }
+  },
+);
 
 export const hydrateWorkspaceCache = createAsyncThunk(
   "workspace/hydrateCache",
@@ -219,7 +276,10 @@ export const hydrateWorkspaceCache = createAsyncThunk(
 
 export const fetchWorkspace = createAsyncThunk(
   "workspace/fetchWorkspace",
-  async (_, { getState }) => {
+  async (_, { getState, dispatch }) => {
+    // Tasks load independently so a failure in another resource cannot hide assignments.
+    dispatch(fetchTasks());
+    dispatch(fetchNotifications());
     const [
       attendance,
       leaves,
@@ -227,14 +287,12 @@ export const fetchWorkspace = createAsyncThunk(
       shifts,
       payslips,
       assets,
-      notifications,
       clients,
       invoices,
       documents,
       messages,
       roleAssignments,
       permissionGrants,
-      tasks,
     ] = await Promise.all(
       resources.map(async (resource) => {
         const url =
@@ -263,15 +321,13 @@ export const fetchWorkspace = createAsyncThunk(
       shifts,
       payslips,
       assets,
-      notifications,
       clients,
       invoices,
       documents,
       messages,
       roleAssignments,
       permissionGrants,
-      tasks,
-    } as WorkspaceState;
+    } satisfies Partial<WorkspaceState>;
     const state = getState() as RootLikeState;
     persistWorkspaceCache(
       { ...(state.workspace ?? defaultState), ...workspace },
@@ -414,8 +470,12 @@ export const applyLeave = createAsyncThunk(
 export const updateLeaveStatus = createAsyncThunk(
   "workspace/updateLeaveStatus",
   async ({ id, status }: { id: string; status: LeaveRequest["status"] }) => {
-    const { data } = await api.patch(`/workspace/leaves/${id}`, { status });
-    return data.data as LeaveRequest;
+    try {
+      const { data } = await api.patch(`/workspace/leaves/${id}`, { status });
+      return data.data as LeaveRequest;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to review leave request"));
+    }
   },
 );
 
@@ -534,18 +594,27 @@ export const addTask = createAsyncThunk(
     description?: string;
     priority?: Task["priority"];
     dueDate?: string;
+    dueTime?: string;
   }) => {
-    const { data } = await api.post("/workspace/tasks", task);
-    return data.data as Task;
+    try {
+      const { data } = await api.post("/workspace/tasks", task);
+      return data.data as Task;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to assign task"));
+    }
   },
 );
 
 export const updateTask = createAsyncThunk(
   "workspace/updateTask",
-  async (task: Partial<Task> & Pick<Task, "id">) => {
-    const { id, ...body } = task;
-    const { data } = await api.patch(`/workspace/tasks/${id}`, body);
-    return data.data as Task;
+  async (task: Pick<Task, "id" | "status">) => {
+    try {
+      const { id, ...body } = task;
+      const { data } = await api.patch(`/workspace/tasks/${id}`, body);
+      return data.data as Task;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to update task"));
+    }
   },
 );
 
@@ -578,8 +647,46 @@ const slice = createSlice({
         Object.assign(state, action.payload);
         persistWorkspaceCache(state);
       })
+      .addCase(fetchTeamActivity.fulfilled, (state, action) => {
+        state.attendance = action.payload.attendance;
+        state.leaves = action.payload.leaves;
+        persistWorkspaceCache(state);
+      })
       .addCase(hydrateWorkspaceCache.fulfilled, (state, action) => {
         if (action.payload) Object.assign(state, { ...defaultState, ...action.payload });
+      })
+      .addCase(fetchTasks.pending, (state, action) => {
+        state.tasksRequestId = action.meta.requestId;
+      })
+      .addCase(fetchTasks.fulfilled, (state, action) => {
+        if (state.tasksRequestId !== action.meta.requestId) return;
+        state.tasks = action.payload;
+        state.tasksRequestId = null;
+        persistWorkspaceCache(state);
+      })
+      .addCase(fetchTasks.rejected, (state, action) => {
+        if (state.tasksRequestId === action.meta.requestId) state.tasksRequestId = null;
+      })
+      .addCase(fetchNotifications.pending, (state, action) => {
+        state.notificationsRequestId = action.meta.requestId;
+      })
+      .addCase(fetchNotifications.fulfilled, (state, action) => {
+        if (state.notificationsRequestId !== action.meta.requestId) return;
+        state.notifications = action.payload;
+        state.notificationsError = null;
+        state.notificationsRequestId = null;
+        persistWorkspaceCache(state);
+      })
+      .addCase(fetchNotifications.rejected, (state, action) => {
+        if (state.notificationsRequestId !== action.meta.requestId) return;
+        state.notificationsError = action.error.message || "Unable to load notifications";
+        state.notificationsRequestId = null;
+      })
+      .addCase(markNotificationRead.fulfilled, (state, action) => {
+        state.notificationsRequestId = null;
+        const existing = state.notifications.find((item) => item.id === action.payload.id);
+        if (existing) Object.assign(existing, action.payload);
+        persistWorkspaceCache(state);
       })
       .addCase(fetchEmployees.fulfilled, (state, action) => {
         state.employees = action.payload;
@@ -656,10 +763,12 @@ const slice = createSlice({
         persistWorkspaceCache(state);
       })
       .addCase(addTask.fulfilled, (state, action) => {
+        state.tasksRequestId = null;
         state.tasks.unshift(action.payload);
         persistWorkspaceCache(state);
       })
       .addCase(updateTask.fulfilled, (state, action) => {
+        state.tasksRequestId = null;
         const existing = state.tasks.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.tasks.unshift(action.payload);

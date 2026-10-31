@@ -39,9 +39,11 @@ export const NAV: Record<Role, NavItem[]> = {
   employee: [
     { to: "/employee/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/employee/profile", label: "Profile", icon: User },
+    { to: "/employee/team", label: "My Team", icon: Users },
     { to: "/employee/attendance", label: "Attendance", icon: Activity },
     { to: "/employee/leaves", label: "Leave Requests", icon: CalendarDays },
     { to: "/employee/tasks", label: "Tasks", icon: ClipboardList },
+    { to: "/employee/notifications", label: "Notifications", icon: Bell },
     { to: "/employee/holidays", label: "Holidays", icon: Calendar },
     { to: "/employee/payslips", label: "Payslips", icon: Wallet },
     { to: "/employee/documents", label: "Documents", icon: FileText },
@@ -73,6 +75,7 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   "team-manager": [
     { to: "/team-manager/dashboard", label: "Team Dashboard", icon: LayoutDashboard },
+    { to: "/team-manager/teams", label: "My Teams", icon: Users },
     { to: "/team-manager/attendance", label: "Team Attendance", icon: Activity },
     { to: "/team-manager/leaves", label: "Team Leaves", icon: CalendarDays },
     { to: "/team-manager/tasks", label: "Tasks", icon: ClipboardList },

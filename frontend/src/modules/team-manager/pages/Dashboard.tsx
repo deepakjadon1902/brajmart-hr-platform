@@ -1,21 +1,47 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
-import { Award, CalendarCheck, ClipboardList, Users } from "lucide-react";
+import { CalendarDays, CalendarCheck, ClipboardList, Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAppSelector } from "@/store";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useManagedTeams, todayInIndia } from "@/modules/teams/useManagedTeams";
+import { useTeamActivityRefresh } from "@/modules/teams/useTeamActivityRefresh";
 
 export default function D() {
-  const { employees, attendance } = useAppSelector((s) => s.workspace);
-  const today = new Date().toISOString().slice(0, 10);
-  const presentToday = attendance.filter(
-    (record) => record.date === today && record.status === "present",
-  ).length;
+  const { attendance, tasks, leaves } = useAppSelector((s) => s.workspace);
+  const { members: employees, memberIds } = useManagedTeams();
+  const { error } = useTeamActivityRefresh();
+  const today = todayInIndia();
+  const presentToday = new Set(
+    attendance
+      .filter(
+        (record) =>
+          memberIds.has(record.employeeId || "") &&
+          record.date === today &&
+          ["present", "late", "half-day"].includes(record.status),
+      )
+      .map((record) => record.employeeId),
+  ).size;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team Dashboard" subtitle="Track your team's day-to-day at a glance." />
+      <PageHeader
+        title="Team Dashboard"
+        subtitle="Track your team's day-to-day at a glance."
+        actions={
+          <Button asChild>
+            <Link to="/team-manager/teams">Manage teams</Link>
+          </Button>
+        }
+      />
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Team size"
@@ -30,11 +56,23 @@ export default function D() {
         />
         <StatCard
           label="Open tasks"
-          value="0"
+          value={String(
+            tasks.filter((task) => memberIds.has(task.employeeId) && task.status !== "completed")
+              .length,
+          )}
           tone="warning"
           icon={<ClipboardList className="h-5 w-5" />}
         />
-        <StatCard label="Avg rating" value="-" tone="info" icon={<Award className="h-5 w-5" />} />
+        <StatCard
+          label="Pending leave"
+          value={String(
+            leaves.filter(
+              (leave) => memberIds.has(leave.employeeId || "") && leave.status === "pending",
+            ).length,
+          )}
+          tone="info"
+          icon={<CalendarDays className="h-5 w-5" />}
+        />
       </div>
       <Card className="p-6 shadow-soft">
         <h3 className="font-semibold">My team</h3>
@@ -55,13 +93,33 @@ export default function D() {
                   <p className="truncate text-sm font-medium">{e.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{e.designation}</p>
                 </div>
-                <StatusBadge status={e.status} />
+                {leaves.some(
+                  (leave) =>
+                    leave.employeeId === e.id &&
+                    leave.status === "approved" &&
+                    leave.from <= today &&
+                    leave.to >= today,
+                ) ? (
+                  <StatusBadge status="on-leave" />
+                ) : attendance.some(
+                    (record) => record.employeeId === e.id && record.date === today,
+                  ) ? (
+                  <StatusBadge
+                    status={
+                      attendance.find(
+                        (record) => record.employeeId === e.id && record.date === today,
+                      )!.status
+                    }
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Not checked in</span>
+                )}
               </li>
             ))}
           </ul>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
-            No employee records found in the database.
+            Create a team and select its members to see their activity here.
           </p>
         )}
       </Card>

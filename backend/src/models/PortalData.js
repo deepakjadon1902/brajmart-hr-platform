@@ -36,29 +36,35 @@ export const Company = mongoose.model(
   ),
 );
 
-export const AttendanceRecord = mongoose.model(
-  "AttendanceRecord",
-  withId(
-    new mongoose.Schema(
-      {
-        companyId: companyField,
-        employeeId: employeeIdField,
-        employeeName: { type: String, trim: true, maxlength: 120 },
-        date: { type: String, required: true, index: true },
-        checkIn: String,
-        checkOut: String,
-        hoursWorked: { type: Number, min: 0, default: 0 },
-        status: { type: String, enum: ["present", "absent", "late", "half-day", "leave"], required: true },
-        location: {
-          lat: Number,
-          lng: Number,
-          address: { type: String, trim: true, maxlength: 240 },
-        },
+const attendanceSchema = withId(
+  new mongoose.Schema(
+    {
+      companyId: companyField,
+      employeeId: employeeIdField,
+      employeeName: { type: String, trim: true, maxlength: 120 },
+      date: { type: String, required: true, index: true },
+      checkIn: String,
+      checkOut: String,
+      checkInAt: Date,
+      checkOutAt: Date,
+      hoursWorked: { type: Number, min: 0, default: 0 },
+      status: { type: String, enum: ["present", "absent", "late", "half-day", "leave"], required: true },
+      location: {
+        lat: Number,
+        lng: Number,
+        address: { type: String, trim: true, maxlength: 240 },
       },
-      baseOptions,
-    ),
+    },
+    baseOptions,
   ),
 );
+
+// Only timestamped records participate so historical duplicates do not block rollout.
+attendanceSchema.index(
+  { companyId: 1, employeeId: 1, date: 1 },
+  { unique: true, partialFilterExpression: { checkInAt: { $exists: true } } },
+);
+export const AttendanceRecord = mongoose.model("AttendanceRecord", attendanceSchema);
 
 export const LeaveRequest = mongoose.model(
   "LeaveRequest",

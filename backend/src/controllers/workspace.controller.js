@@ -19,6 +19,7 @@ import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { created, success } from "../utils/http.js";
 import { canAccessPortal } from "../utils/portalAccess.js";
+import { attendanceCheckInTime, attendanceCheckout } from "../services/attendance.service.js";
 import { syncPendingTaskNotifications, taskDeadlineFields, updateTaskNotifications } from "../services/task-notifications.service.js";
 import { isPeopleAdmin, isTeamManager, managedMemberIds, canManageMember, requireManagedMember } from "../services/teams.service.js";
 
@@ -199,6 +200,22 @@ async function enrichCreate(req, resource, body) {
   }
 
   if (resource === "attendance") {
+    if (!isPeopleAdmin(req.user) || (
+      String(record.employeeId) === req.user.id && !body.date && !body.checkIn
+    )) {
+      // Employees can mark attendance, but cannot supply their own clock or duration.
+      return {
+        companyId: record.companyId,
+        employeeId: record.employeeId,
+        employeeName: record.employeeName,
+        date: today(),
+        checkIn: nowTime(),
+        checkInAt: new Date(),
+        hoursWorked: 0,
+        status: "present",
+        location: record.location,
+      };
+    }
     record.date = record.date || today();
     record.checkIn = record.checkIn || nowTime();
     if (record.checkIn && record.checkOut) {
@@ -242,6 +259,27 @@ export const createWorkspaceRecord = asyncHandler(async (req, res) => {
   const config = getConfig(resource);
   assertCanUseResource(req, resource, config, "create");
   const payload = await enrichCreate(req, resource, req.validated.body);
+  if (resource === "attendance" && payload.checkInAt && String(payload.employeeId) === req.user.id) {
+    // A repeated check-in must never turn into a check-out or create another shift.
+    const scope = { companyId: payload.companyId, employeeId: payload.employeeId };
+    const open = await AttendanceRecord.findOne({ ...scope, checkIn: { $nin: [null, ""] }, checkOut: { $in: [null, ""] } }).sort({ date: -1 });
+    if (open && Date.now() - attendanceCheckInTime(open).getTime() < 24 * 60 * 60 * 1000) {
+      return success(res, open);
+    }
+    let record;
+    try {
+      record = await AttendanceRecord.findOneAndUpdate(
+        { ...scope, date: payload.date },
+        { $setOnInsert: payload },
+        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
+      );
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      record = await AttendanceRecord.findOne({ ...scope, date: payload.date });
+      if (!record) throw error;
+    }
+    return success(res, record, 201);
+  }
   const record = await config.model.create(payload);
   if (resource === "tasks") {
     // The saved task is a durable retry source if notification delivery is temporarily unavailable.
@@ -331,9 +369,16 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
     if (!isAssignee && !canManage) {
       throw new AppError("You do not have permission to update this attendance", 403);
     }
-    if (!canManage) {
-      delete patch.employeeId;
-      delete patch.employeeName;
+    if (!canManage || (isAssignee && patch.checkOut === true)) {
+      if (existing.checkOut) return success(res, existing);
+      if (!patch.checkOut) throw new AppError("Only check-out is allowed for your attendance", 400);
+      const checkout = attendanceCheckout(existing);
+      const record = await config.model.findOneAndUpdate(
+        { _id: existing._id, companyId: existing.companyId, checkOut: { $in: [null, ""] } },
+        { $set: checkout },
+        { new: true, runValidators: true },
+      );
+      return success(res, record || await config.model.findById(existing._id));
     }
     const checkIn = patch.checkIn || existing.checkIn;
     const checkOut = patch.checkOut || existing.checkOut;

@@ -11,12 +11,12 @@ export function ProtectedRoute({
   allow: Role | Role[];
   children: React.ReactNode;
 }) {
-  const { user, token, status, sessionChecked } = useAppSelector((s) => s.auth);
+  const { user, token, sessionChecked } = useAppSelector((s) => s.auth);
   const location = useLocation();
   const allowedRoles = Array.isArray(allow) ? allow : [allow];
   const primaryRole = allowedRoles[0];
 
-  if (!sessionChecked || status === "loading") {
+  if (!sessionChecked && (!user || !token)) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
         Restoring session...

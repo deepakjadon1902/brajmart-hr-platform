@@ -77,6 +77,8 @@ export interface AttendanceRecord {
   date: string;
   checkIn?: string;
   checkOut?: string;
+  checkInAt?: string;
+  checkOutAt?: string;
   hoursWorked?: number;
   status: "present" | "absent" | "late" | "half-day" | "leave";
   location?: { lat: number; lng: number; address?: string };
@@ -167,11 +169,7 @@ export interface Client {
   owner: string;
   email: string;
   domain:
-    | "IT"
-    | "Digital Marketing"
-    | "Social Marketing"
-    | "Email Marketing"
-    | "WhatsApp Marketing";
+    "IT" | "Digital Marketing" | "Social Marketing" | "Email Marketing" | "WhatsApp Marketing";
   status: "continue" | "on-break" | "leave" | "new";
   addedBy: string;
   monthlyValue: number;

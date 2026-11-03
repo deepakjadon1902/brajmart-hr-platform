@@ -106,7 +106,7 @@ export function AuthShell({ role }: { role: Role }) {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", remember: true },
   });
 
   useEffect(() => {

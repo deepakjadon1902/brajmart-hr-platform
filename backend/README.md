@@ -49,6 +49,16 @@ The API listens on `http://localhost:5000`. The Vite frontend proxies `/api` to 
 - `GET /api/v1/teams/options`
 - `PATCH/DELETE /api/v1/teams/:id`
 
+## Employee Sessions and Attendance
+
+Device persistence is selected by default at login. The portal renews expired access tokens silently and retries the original API request once. Network failures retain the current login; invalid or expired refresh credentials and inactive accounts require another login. Token expiry settings remain configurable through `JWT_ACCESS_EXPIRES_IN` and `JWT_REFRESH_EXPIRES_IN`.
+
+Employees and team managers mark their own attendance with `POST /workspace/attendance` and check out with `PATCH /workspace/attendance/:id` and `{ "checkOut": true }`. The API records the times and requires at least 30 elapsed minutes. Historical records fall back to their saved date/time in IST. Repeated check-ins and check-outs return the saved record. HR and super admins retain attendance correction access.
+
+A partial unique index on company, employee, and date prevents concurrent timestamped check-ins from creating duplicate records. Historical records without `checkInAt` are excluded, so deployment requires no deletion of historical attendance. The API ensures attendance indexes exist before accepting requests, including in production.
+
+Run `node --test test/attendance.test.js test/attendance.integration.test.js` to verify the exact 30-minute boundary, old records, midnight, concurrent check-ins, timestamp tampering, checkout persistence, and refresh-cookie handling. Integration tests create and remove temporary records in the configured database. Run `npm test` in `frontend` for session renewal, preserved form rendering, submission retries, storage preferences, and logout races.
+
 ## Task Assignment
 
 HR and super admins can assign tasks across their company. Team managers can assign and manage tasks for members of their own teams. Tasks are saved in MongoDB and appear on the assigned employee's Tasks page. Employees can update only their own task status: Not started, In progress, or Completed. HR and the respective manager see the saved status on their Tasks page, which refreshes every five seconds while visible and when the window regains focus. A Refresh button is also available.

@@ -1,6 +1,8 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/services/api";
-import { todayInIndia, timeInIndia } from "@/utils/date";
+import { todayInIndia } from "@/utils/date";
+import { currentAttendance } from "@/lib/attendance";
+import { getStoredUser } from "@/services/authStorage";
 import type {
   Asset,
   AttendanceRecord,
@@ -52,22 +54,6 @@ type RootLikeState = {
 const workspaceCachePrefix = "workspace_cache_v2";
 
 const today = todayInIndia;
-const nowTime = timeInIndia;
-const minutesFromTime = (value?: string) => {
-  const [hours, minutes] = String(value || "")
-    .split(":")
-    .map((part) => Number(part));
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  return hours * 60 + minutes;
-};
-const hoursBetweenTimes = (start?: string, end?: string) => {
-  const startMinutes = minutesFromTime(start);
-  const endMinutes = minutesFromTime(end);
-  if (startMinutes === null || endMinutes === null) return 0;
-  const diff =
-    endMinutes >= startMinutes ? endMinutes - startMinutes : endMinutes + 24 * 60 - startMinutes;
-  return Math.round((diff / 60) * 100) / 100;
-};
 const nowStamp = () => {
   const d = new Date();
   return `${d.toISOString().slice(0, 10)} ${d.toTimeString().slice(0, 5)}`;
@@ -100,8 +86,7 @@ function workspaceCacheKey(userId?: string, companyId?: string) {
 
 function currentCacheKey() {
   try {
-    const rawUser = localStorage.getItem("auth_user");
-    const user = rawUser ? (JSON.parse(rawUser) as { id?: string; companyId?: string }) : null;
+    const user = getStoredUser();
     return workspaceCacheKey(user?.id, localStorage.getItem("active_company") || user?.companyId);
   } catch {
     return "";
@@ -136,16 +121,14 @@ const initialState = {
   ...(readWorkspaceCache(
     (() => {
       try {
-        const raw = localStorage.getItem("auth_user");
-        return raw ? (JSON.parse(raw) as { id?: string }).id : undefined;
+        return getStoredUser()?.id;
       } catch {
         return undefined;
       }
     })(),
     (() => {
       try {
-        const raw = localStorage.getItem("auth_user");
-        const user = raw ? (JSON.parse(raw) as { companyId?: string }) : null;
+        const user = getStoredUser();
         return localStorage.getItem("active_company") || user?.companyId;
       } catch {
         return undefined;
@@ -419,36 +402,32 @@ export const upsertInvoice = createAsyncThunk(
 export const markAttendance = createAsyncThunk(
   "workspace/markAttendance",
   async (
-    record: { employeeId: string; employeeName?: string; location?: AttendanceRecord["location"] },
+    record: {
+      employeeId: string;
+      employeeName?: string;
+      location?: AttendanceRecord["location"];
+      action: "check-in" | "check-out";
+    },
     { getState },
   ) => {
-    const state = getState() as { workspace: WorkspaceState };
-    const date = today();
-    const existing = state.workspace.attendance.find(
-      (item) => item.employeeId === record.employeeId && item.date === date,
-    );
-    if (existing) {
-      const checkOut = existing.checkIn && !existing.checkOut ? nowTime() : existing.checkOut;
-      const { data } = await api.patch(`/workspace/attendance/${existing.id}`, {
-        checkIn: existing.checkIn || nowTime(),
-        checkOut,
-        status: "present",
-        hoursWorked:
-          existing.checkIn && checkOut
-            ? hoursBetweenTimes(existing.checkIn, checkOut)
-            : existing.hoursWorked,
-        location: record.location ?? existing.location,
-      });
+    try {
+      const state = getState() as { workspace: WorkspaceState };
+      const existing = currentAttendance(
+        state.workspace.attendance.filter((item) => item.employeeId === record.employeeId),
+      );
+      if (record.action === "check-out") {
+        if (!existing?.checkIn) throw new Error("Check in before checking out");
+        const { data } = await api.patch(`/workspace/attendance/${existing.id}`, {
+          checkOut: true,
+        });
+        return data.data as AttendanceRecord;
+      }
+      const { action, ...checkIn } = record;
+      const { data } = await api.post("/workspace/attendance", checkIn);
       return data.data as AttendanceRecord;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to update attendance"));
     }
-    const { data } = await api.post("/workspace/attendance", {
-      ...record,
-      date,
-      checkIn: nowTime(),
-      status: "present",
-      hoursWorked: 0,
-    });
-    return data.data as AttendanceRecord;
   },
 );
 

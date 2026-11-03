@@ -15,13 +15,17 @@ import { TeamSync } from "@/components/common/TeamSync";
 export default function App() {
   const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.auth.token);
+  const hasToken = Boolean(token);
   const user = useAppSelector((state) => state.auth.user);
   const activeCompanyId = useAppSelector((state) => state.company.activeId);
   const userId = user?.id;
   const companyId = activeCompanyId || user?.companyId;
-  const attemptedSessionRestore = useRef(false);
+  const attemptedSessionRestore = useRef(hasToken);
+  const refreshingPortal = useRef(false);
 
   const refreshPortalData = useCallback(async () => {
+    if (refreshingPortal.current) return;
+    refreshingPortal.current = true;
     try {
       const { user: refreshedUser } = await dispatch(refreshUserThunk()).unwrap();
       const refreshedCanLoadEmployees =
@@ -34,7 +38,9 @@ export default function App() {
       if (refreshedCanLoadEmployees) dispatch(fetchEmployees());
       dispatch(fetchWorkspace());
     } catch {
-      // The auth slice clears stale credentials; route guards handle navigation.
+      // Temporary connection failures leave the current portal and forms mounted.
+    } finally {
+      refreshingPortal.current = false;
     }
   }, [dispatch]);
 
@@ -55,12 +61,12 @@ export default function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!token && !attemptedSessionRestore.current) {
+    if (!hasToken && !attemptedSessionRestore.current) {
       attemptedSessionRestore.current = true;
       void refreshPortalData();
       return;
     }
-    if (!token) return;
+    if (!hasToken) return;
     if (!userId) {
       void refreshPortalData();
       return;
@@ -71,17 +77,18 @@ export default function App() {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void refreshPortalData();
     };
+    const refreshOnFocus = () => void refreshPortalData();
     const refreshInterval = window.setInterval(() => void refreshPortalData(), 60000);
 
-    window.addEventListener("focus", refreshPortalData);
+    window.addEventListener("focus", refreshOnFocus);
     document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       window.clearInterval(refreshInterval);
-      window.removeEventListener("focus", refreshPortalData);
+      window.removeEventListener("focus", refreshOnFocus);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [companyId, dispatch, refreshPortalData, token, userId]);
+  }, [companyId, dispatch, refreshPortalData, hasToken, userId]);
 
   return (
     <>

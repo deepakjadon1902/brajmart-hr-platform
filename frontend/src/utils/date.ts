@@ -1,10 +1,10 @@
-export function todayInIndia() {
+export function todayInIndia(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(date);
 }
 
 export function timeInIndia() {

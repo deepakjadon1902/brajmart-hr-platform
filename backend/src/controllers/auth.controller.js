@@ -76,7 +76,7 @@ export const login = asyncHandler(async (req, res) => {
 
   if (user.status === "inactive") throw new AppError("Account is inactive", 403);
 
-  const session = await issueSession(res, user, { remember: remember === true });
+  const session = await issueSession(res, user, { remember: remember !== false });
   return success(res, session);
 });
 
@@ -256,9 +256,11 @@ export const refresh = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies.refresh_token;
   if (!refreshToken) throw new AppError("Refresh token missing", 401);
 
-  const payload = verifyRefreshToken(refreshToken);
+  let payload;
+  try { payload = verifyRefreshToken(refreshToken); }
+  catch { throw new AppError("Invalid or expired refresh token", 401); }
   const user = await User.findById(payload.sub).select("+refreshTokenHash");
-  if (!user || !(await user.verifyRefreshToken(refreshToken))) {
+  if (!user || user.status === "inactive" || !(await user.verifyRefreshToken(refreshToken))) {
     throw new AppError("Invalid refresh token", 401);
   }
 
@@ -269,10 +271,18 @@ export const refresh = asyncHandler(async (req, res) => {
 export const me = asyncHandler(async (req, res) => success(res, { user: req.user.toJSON() }));
 
 export const logout = asyncHandler(async (req, res) => {
-  if (req.user) {
-    req.user.refreshTokenHash = undefined;
-    await req.user.save();
-  }
+  // Logout must clear the cookie even when the access token has already expired.
   clearRefreshCookie(res);
+  const refreshToken = req.cookies.refresh_token;
+  let payload;
+  try { if (refreshToken) payload = verifyRefreshToken(refreshToken); }
+  catch { /* An expired cookie still needs to be cleared. */ }
+  if (payload) {
+    const user = await User.findById(payload.sub).select("+refreshTokenHash");
+    if (user && await user.verifyRefreshToken(refreshToken)) {
+      user.refreshTokenHash = undefined;
+      await user.save();
+    }
+  }
   return success(res, { loggedOut: true });
 });

@@ -4,9 +4,12 @@ import { connectDatabase } from "./config/db.js";
 import { createApp } from "./app.js";
 import { ensurePermanentAccounts } from "./services/bootstrap.service.js";
 import { startTaskReminderScheduler } from "./services/task-notifications.service.js";
+import { AttendanceRecord } from "./models/PortalData.js";
 
 async function start() {
   await connectDatabase();
+  // This constraint is required in production too, where automatic indexing is disabled.
+  await AttendanceRecord.createIndexes();
   await ensurePermanentAccounts();
 
   const app = createApp();

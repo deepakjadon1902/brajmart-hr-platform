@@ -1,5 +1,5 @@
 import type { Role, User } from "@/types";
-import { api } from "./api";
+import { api, cancelSessionRefresh, refreshSession } from "./api";
 
 function getApiMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error && "response" in error) {
@@ -37,9 +37,8 @@ export const authService = {
       throw new Error(getApiMessage(error, "Unable to continue with Google."));
     }
   },
-  async refresh(remember?: boolean): Promise<{ user: User; token: string }> {
-    const { data } = await api.post("/auth/refresh", { remember });
-    return data.data;
+  async refresh(): Promise<{ user: User; token: string }> {
+    return refreshSession();
   },
   async getGoogleClientId(): Promise<string> {
     const { data } = await api.get("/auth/google/config");
@@ -82,6 +81,7 @@ export const authService = {
     }
   },
   async logout() {
+    cancelSessionRefresh();
     try {
       await api.post("/auth/logout");
     } catch {

@@ -34,4 +34,4 @@ authRoutes.post("/password-reset/verify", validate(passwordResetVerifySchema), v
 authRoutes.post("/password-reset/complete", validate(passwordResetCompleteSchema), completePasswordReset);
 authRoutes.post("/refresh", refresh);
 authRoutes.get("/me", requireAuth, me);
-authRoutes.post("/logout", requireAuth, logout);
+authRoutes.post("/logout", logout);

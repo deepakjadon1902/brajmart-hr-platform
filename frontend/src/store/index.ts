@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector, TypedUseSelectorHook } from "react-redux";
-import auth from "./slices/authSlice";
+import auth, { logout, sessionUpdated } from "./slices/authSlice";
+import { setSessionHandlers } from "@/services/api";
 import theme from "./slices/themeSlice";
 import company from "./slices/companySlice";
 import ui from "./slices/uiSlice";
@@ -9,6 +10,11 @@ import teams from "./slices/teamsSlice";
 
 export const store = configureStore({
   reducer: { auth, theme, company, ui, workspace, teams },
+});
+
+setSessionHandlers({
+  updated: (session) => store.dispatch(sessionUpdated(session)),
+  expired: () => store.dispatch(logout()),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

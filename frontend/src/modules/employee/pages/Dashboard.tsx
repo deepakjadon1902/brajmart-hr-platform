@@ -2,21 +2,17 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Clock, MapPin, CalendarDays, Wallet, Activity, CheckCircle2, Coffee } from "lucide-react";
-import { useAppDispatch, useAppSelector } from "@/store";
+import { Clock, MapPin, CalendarDays, Wallet, Activity } from "lucide-react";
+import { useAppSelector } from "@/store";
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from "recharts";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { toast } from "sonner";
-import { markAttendance } from "@/store/slices/workspaceSlice";
 import { TeamSummary } from "@/modules/teams/TeamSummary";
-import { todayInIndia } from "@/utils/date";
-import { formatAttendanceLocation, getCurrentAttendanceLocation } from "@/lib/attendanceLocation";
+import { AttendanceButton } from "@/components/common/AttendanceButton";
+import { currentAttendance } from "@/lib/attendance";
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
-  const dispatch = useAppDispatch();
   const { attendance, employees, holidays, leaves, notifications, payslips, tasks } =
     useAppSelector((s) => s.workspace);
   const [time, setTime] = useState(new Date());
@@ -27,8 +23,7 @@ export default function Dashboard() {
   );
   const employeeLeaves = leaves.filter((leave) => leave.employeeId === currentEmployee?.id);
   const employeeTasks = tasks.filter((task) => task.employeeId === currentEmployee?.id);
-  const todayRecord = employeeAttendance.find((record) => record.date === todayInIndia());
-  const checkedIn = Boolean(todayRecord?.checkIn && !todayRecord?.checkOut);
+  const todayRecord = currentAttendance(employeeAttendance);
   const totalHours = Math.round(
     employeeAttendance.reduce((sum, record) => sum + (record.hoursWorked ?? 0), 0),
   );
@@ -55,26 +50,6 @@ export default function Dashboard() {
     .slice(0, 14)
     .reverse()
     .map((a) => ({ date: a.date.slice(5), hours: a.hoursWorked }));
-
-  const onCheck = async () => {
-    if (!currentEmployee) return;
-    try {
-      const location = checkedIn ? todayRecord?.location : await getCurrentAttendanceLocation();
-      setLoc(formatAttendanceLocation(location));
-      const record = await dispatch(
-        markAttendance({
-          employeeId: currentEmployee.id,
-          employeeName: currentEmployee.name,
-          location,
-        }),
-      ).unwrap();
-      toast.success(
-        checkedIn ? "Checked out" : `Checked in @ ${formatAttendanceLocation(record.location)}`,
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update attendance");
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -129,19 +104,7 @@ export default function Dashboard() {
               <MapPin className="h-4 w-4 text-primary" />
               <span className="truncate">{loc}</span>
             </div>
-            <Button onClick={onCheck} className="mt-4 w-full" size="lg">
-              {checkedIn ? (
-                <>
-                  <Coffee className="mr-2 h-4 w-4" />
-                  Check Out
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Check In
-                </>
-              )}
-            </Button>
+            <AttendanceButton employee={currentEmployee} record={todayRecord} onLocation={setLoc} />
           </div>
         </motion.div>
 

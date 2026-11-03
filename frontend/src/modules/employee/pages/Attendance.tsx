@@ -3,19 +3,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { DataTable } from "@/components/common/DataTable";
 import { ExportButtons } from "@/components/common/ExportButtons";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Clock, MapPin, CheckCircle2, Coffee, Activity } from "lucide-react";
+import { Clock, MapPin, Activity } from "lucide-react";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { toast } from "sonner";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { markAttendance } from "@/store/slices/workspaceSlice";
-import { todayInIndia } from "@/utils/date";
-import {
-  attendanceMapUrl,
-  formatAttendanceLocation,
-  getCurrentAttendanceLocation,
-} from "@/lib/attendanceLocation";
+import { useAppSelector } from "@/store";
+import { AttendanceButton } from "@/components/common/AttendanceButton";
+import { currentAttendance } from "@/lib/attendance";
+import { attendanceMapUrl, formatAttendanceLocation } from "@/lib/attendanceLocation";
 
 function formatDuration(hours = 0) {
   const totalMinutes = Math.round(hours * 60);
@@ -27,15 +21,13 @@ function formatDuration(hours = 0) {
 
 export default function Attendance() {
   const [loc, setLoc] = useState("Detecting...");
-  const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const { attendance, employees } = useAppSelector((s) => s.workspace);
   const currentEmployee = employees.find((employee) => employee.id === user?.id) ?? user;
   const employeeAttendance = attendance.filter(
     (record) => record.employeeId === currentEmployee?.id,
   );
-  const todayRecord = employeeAttendance.find((record) => record.date === todayInIndia());
-  const checked = Boolean(todayRecord?.checkIn && !todayRecord?.checkOut);
+  const todayRecord = currentAttendance(employeeAttendance);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
@@ -57,45 +49,7 @@ export default function Attendance() {
             <MapPin className="h-4 w-4 text-primary" />
             <span className="truncate">{loc}</span>
           </div>
-          <Button
-            className="mt-4 w-full"
-            size="lg"
-            onClick={async () => {
-              if (!currentEmployee) return;
-              try {
-                const location = checked
-                  ? todayRecord?.location
-                  : await getCurrentAttendanceLocation();
-                setLoc(formatAttendanceLocation(location));
-                const record = await dispatch(
-                  markAttendance({
-                    employeeId: currentEmployee.id,
-                    employeeName: currentEmployee.name,
-                    location,
-                  }),
-                ).unwrap();
-                toast.success(
-                  checked
-                    ? `Checked out. Duration ${formatDuration(record.hoursWorked ?? 0)}`
-                    : `Checked in @ ${formatAttendanceLocation(record.location)}`,
-                );
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Unable to update attendance");
-              }
-            }}
-          >
-            {checked ? (
-              <>
-                <Coffee className="mr-2 h-4 w-4" />
-                Check Out
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Check In
-              </>
-            )}
-          </Button>
+          <AttendanceButton employee={currentEmployee} record={todayRecord} onLocation={setLoc} />
         </Card>
         <StatCard
           label="Today"

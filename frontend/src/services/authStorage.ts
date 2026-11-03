@@ -25,8 +25,8 @@ export function isRememberedSession() {
 }
 
 export function saveSession(user: User, token: string, remember?: boolean) {
-  clearSession();
   const storage = preferredStorage(remember);
+  clearSession();
   storage.setItem(tokenKey, token);
   storage.setItem(userKey, JSON.stringify(user));
   if (storage === localStorage) localStorage.setItem(rememberKey, "true");

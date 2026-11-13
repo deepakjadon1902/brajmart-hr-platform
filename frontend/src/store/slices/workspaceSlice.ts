@@ -162,7 +162,7 @@ function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee
     designation: item.designation,
     phone: item.phone,
     avatar: item.avatar,
-    joinDate: item.joinDate,
+    joinDate: item.joinDate ?? undefined,
     status: item.status ?? "active",
     location: item.location,
     manager: item.manager,

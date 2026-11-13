@@ -62,7 +62,10 @@ export const updateUserSchema = z.object({
     bankName: z.string().trim().max(120).optional(),
     bankAccount: z.string().trim().max(80).optional(),
     pan: z.string().trim().max(20).optional(),
-    joinDate: z.coerce.date().optional(),
+    joinDate: z
+      .union([z.literal(""), z.coerce.date()])
+      .transform((value) => (value === "" ? null : value))
+      .optional(),
     avatar: z.string().url().optional(),
     status: z.enum(["active", "inactive", "on-leave"]).optional(),
     companyId: z.string().trim().max(40).optional(),

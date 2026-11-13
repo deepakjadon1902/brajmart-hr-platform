@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Employee, Role } from "@/types";
+import type { Company, Employee, Role } from "@/types";
 import {
   Select,
   SelectContent,
@@ -82,77 +82,14 @@ function formatDate(value?: string) {
   return date.toLocaleDateString("en-IN");
 }
 
-export default function Employees() {
-  const dispatch = useAppDispatch();
-  const user = useAppSelector((s) => s.auth.user);
-  const { employees, documents } = useAppSelector((s) => s.workspace);
-  const companies = useAppSelector((s) => s.company.list);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Employee | null>(null);
-  const [viewingDocumentsFor, setViewingDocumentsFor] = useState<Employee | null>(null);
-  const employeeDocuments = viewingDocumentsFor
-    ? documents.filter((document) => document.employeeId === viewingDocumentsFor.id)
-    : [];
-
-  const refreshSavedData = async () => {
-    await Promise.all([dispatch(fetchEmployees()).unwrap(), dispatch(fetchWorkspace()).unwrap()]);
-  };
-
-  const saveEmployeeDetails = async (event: FormEvent<HTMLFormElement>, employee?: Employee) => {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const name = String(form.get("name") ?? "").trim();
-    const email = String(form.get("email") ?? employee?.email ?? "").trim();
-    const department = String(form.get("department") ?? "").trim();
-    const designation = String(form.get("designation") ?? "").trim();
-    const monthlyCtc = Number(form.get("monthlyCtc") || 0);
-    const selectedRole = String(form.get("role") ?? employee?.role ?? "employee") as Role;
-    const password = String(form.get("password") ?? "").trim();
-    const joinDate = String(form.get("joinDate") ?? "").trim();
-    const payload = {
-      name,
-      email,
-      ...(password ? { password } : {}),
-      ...(joinDate ? { joinDate } : {}),
-      role:
-        selectedRole === "employee" ? inferRoleFromDetails(department, designation) : selectedRole,
-      department,
-      designation,
-      location: String(form.get("location") ?? "").trim(),
-      manager: String(form.get("manager") ?? "").trim(),
-      employeeNo: String(form.get("employeeNo") ?? "").trim(),
-      salary: monthlyCtc,
-      baseSalary: Number(form.get("baseSalary") || 0),
-      monthlyCtc,
-      annualCtc: Number(form.get("annualCtc") || monthlyCtc * 12),
-      bankName: String(form.get("bankName") ?? "").trim(),
-      bankAccount: String(form.get("bankAccount") ?? "").trim(),
-      pan: String(form.get("pan") ?? "").trim(),
-      companyId: String(form.get("companyId") ?? "").trim() || undefined,
-    };
-
-    try {
-      if (employee) {
-        await dispatch(updateEmployee({ id: employee.id, ...payload })).unwrap();
-        await refreshSavedData();
-        toast.success(`${name} updated`);
-        setEditing(null);
-      } else {
-        await dispatch(createEmployee(payload)).unwrap();
-        await refreshSavedData();
-        toast.success(`${name} added`);
-        setOpen(false);
-        formElement.reset();
-      }
-    } catch (error) {
-      toast.error(toastErrorMessage(error, "Unable to save employee"));
-    }
-  };
-
-  const EmployeeFields = ({ employee }: { employee?: Employee }) => (
+function renderEmployeeFields(
+  employee: Employee | undefined,
+  userRole: Role | undefined,
+  companies: Company[],
+) {
+  return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {user?.role === "super-admin" && (
+      {userRole === "super-admin" && (
         <div className="sm:col-span-2">
           <Label>Company</Label>
           <Select name="companyId" defaultValue={employee?.companyId || companies[0]?.id || "c1"}>
@@ -225,7 +162,7 @@ export default function Employees() {
           name="department"
           defaultValue={employee?.department}
           className="mt-1"
-          required
+          required={!employee}
         />
       </div>
       <div>
@@ -235,7 +172,7 @@ export default function Employees() {
           name="designation"
           defaultValue={employee?.designation}
           className="mt-1"
-          required
+          required={!employee}
         />
       </div>
       <div>
@@ -334,6 +271,74 @@ export default function Employees() {
       </div>
     </div>
   );
+}
+
+export default function Employees() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((s) => s.auth.user);
+  const { employees, documents } = useAppSelector((s) => s.workspace);
+  const companies = useAppSelector((s) => s.company.list);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
+  const [viewingDocumentsFor, setViewingDocumentsFor] = useState<Employee | null>(null);
+  const employeeDocuments = viewingDocumentsFor
+    ? documents.filter((document) => document.employeeId === viewingDocumentsFor.id)
+    : [];
+
+  const refreshSavedData = async () => {
+    await Promise.all([dispatch(fetchEmployees()).unwrap(), dispatch(fetchWorkspace()).unwrap()]);
+  };
+
+  const saveEmployeeDetails = async (event: FormEvent<HTMLFormElement>, employee?: Employee) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const name = String(form.get("name") ?? "").trim();
+    const email = String(form.get("email") ?? employee?.email ?? "").trim();
+    const department = String(form.get("department") ?? "").trim();
+    const designation = String(form.get("designation") ?? "").trim();
+    const monthlyCtc = Number(form.get("monthlyCtc") || 0);
+    const selectedRole = String(form.get("role") ?? employee?.role ?? "employee") as Role;
+    const password = String(form.get("password") ?? "").trim();
+    const joinDate = String(form.get("joinDate") ?? "").trim();
+    const payload = {
+      name,
+      email,
+      ...(password ? { password } : {}),
+      role:
+        selectedRole === "employee" ? inferRoleFromDetails(department, designation) : selectedRole,
+      department,
+      designation,
+      location: String(form.get("location") ?? "").trim(),
+      manager: String(form.get("manager") ?? "").trim(),
+      employeeNo: String(form.get("employeeNo") ?? "").trim(),
+      salary: monthlyCtc,
+      baseSalary: Number(form.get("baseSalary") || 0),
+      monthlyCtc,
+      annualCtc: Number(form.get("annualCtc") || (employee ? 0 : monthlyCtc * 12)),
+      bankName: String(form.get("bankName") ?? "").trim(),
+      bankAccount: String(form.get("bankAccount") ?? "").trim(),
+      pan: String(form.get("pan") ?? "").trim(),
+      companyId: String(form.get("companyId") ?? "").trim() || undefined,
+    };
+
+    try {
+      if (employee) {
+        await dispatch(updateEmployee({ id: employee.id, ...payload, joinDate })).unwrap();
+        await refreshSavedData();
+        toast.success(`${name} updated`);
+        setEditing(null);
+      } else {
+        await dispatch(createEmployee({ ...payload, ...(joinDate ? { joinDate } : {}) })).unwrap();
+        await refreshSavedData();
+        toast.success(`${name} added`);
+        setOpen(false);
+        formElement.reset();
+      }
+    } catch (error) {
+      toast.error(toastErrorMessage(error, "Unable to save employee"));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -353,7 +358,7 @@ export default function Employees() {
                 <DialogTitle>Add employee</DialogTitle>
               </DialogHeader>
               <form className="space-y-4" onSubmit={(event) => saveEmployeeDetails(event)}>
-                <EmployeeFields />
+                {renderEmployeeFields(undefined, user?.role, companies)}
                 <Button type="submit" className="w-full">
                   Save employee
                 </Button>
@@ -369,7 +374,7 @@ export default function Employees() {
           </DialogHeader>
           {editing && (
             <form className="space-y-4" onSubmit={(event) => saveEmployeeDetails(event, editing)}>
-              <EmployeeFields employee={editing} />
+              {renderEmployeeFields(editing, user?.role, companies)}
               <Button type="submit" className="w-full">
                 Save details
               </Button>

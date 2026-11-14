@@ -473,6 +473,39 @@ export const updateLeaveStatus = createAsyncThunk(
   },
 );
 
+export const createHoliday = createAsyncThunk(
+  "workspace/createHoliday",
+  async (holiday: Pick<Holiday, "name" | "date" | "type">) => {
+    try {
+      const { data } = await api.post("/workspace/holidays", holiday);
+      return data.data as Holiday;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to add holiday"));
+    }
+  },
+);
+
+export const updateHoliday = createAsyncThunk(
+  "workspace/updateHoliday",
+  async ({ id, ...holiday }: Pick<Holiday, "id"> & Partial<Pick<Holiday, "name" | "date" | "type">>) => {
+    try {
+      const { data } = await api.patch(`/workspace/holidays/${id}`, holiday);
+      return data.data as Holiday;
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to update holiday"));
+    }
+  },
+);
+
+export const deleteHoliday = createAsyncThunk("workspace/deleteHoliday", async (id: string) => {
+  try {
+    await api.delete(`/workspace/holidays/${id}`);
+    return id;
+  } catch (error) {
+    throw new Error(apiErrorMessage(error, "Unable to delete holiday"));
+  }
+});
+
 export const addDocument = createAsyncThunk(
   "workspace/addDocument",
   async (document: {
@@ -706,6 +739,20 @@ const slice = createSlice({
         const existing = state.employees.find((item) => item.id === action.payload.id);
         if (existing) Object.assign(existing, action.payload);
         else state.employees.unshift(action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(createHoliday.fulfilled, (state, action) => {
+        state.holidays.push(action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(updateHoliday.fulfilled, (state, action) => {
+        const existing = state.holidays.find((item) => item.id === action.payload.id);
+        if (existing) Object.assign(existing, action.payload);
+        else state.holidays.push(action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(deleteHoliday.fulfilled, (state, action) => {
+        state.holidays = state.holidays.filter((holiday) => holiday.id !== action.payload);
         persistWorkspaceCache(state);
       })
       .addCase(addClient.fulfilled, (state, action) => {

@@ -3,6 +3,7 @@ import { Suspense, lazy } from "react";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PortalLayout } from "@/layouts/PortalLayout";
 import { Skeleton } from "@/components/ui/skeleton";
+import HRHolidays from "@/modules/hr/pages/Holidays";
 
 const Landing = lazy(() => import("@/modules/landing/Landing"));
 const NotFound = lazy(() => import("@/modules/landing/NotFound"));
@@ -39,7 +40,6 @@ const HRLeaves = lazy(() => import("@/modules/hr/pages/Leaves"));
 const HRTasks = lazy(() => import("@/modules/hr/pages/Tasks"));
 const HROnboarding = lazy(() => import("@/modules/hr/pages/Onboarding"));
 const HRExit = lazy(() => import("@/modules/hr/pages/Exit"));
-const HRHolidays = lazy(() => import("@/modules/hr/pages/Holidays"));
 const HRReports = lazy(() => import("@/modules/hr/pages/Reports"));
 const HRMail = lazy(() => import("@/modules/hr/pages/MailCenter"));
 const HRSalary = lazy(() => import("@/modules/super-admin/pages/Salary"));

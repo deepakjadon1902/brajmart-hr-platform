@@ -26,6 +26,9 @@ const MAP: Record<string, string> = {
   absent: "bg-destructive/15 text-destructive",
   inactive: "bg-muted text-muted-foreground",
   exited: "bg-destructive/15 text-destructive",
+  public: "bg-success/15 text-success",
+  company: "bg-info/15 text-info",
+  department: "bg-warning/15 text-warning",
   returned: "bg-muted text-muted-foreground",
   "in-repair": "bg-warning/15 text-warning",
 };

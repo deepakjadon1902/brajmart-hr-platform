@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { TeamSummary } from "@/modules/teams/TeamSummary";
 import { AttendanceButton } from "@/components/common/AttendanceButton";
 import { currentAttendance } from "@/lib/attendance";
+import { todayInIndia } from "@/utils/date";
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -29,6 +30,10 @@ export default function Dashboard() {
   );
   const approvedLeaves = employeeLeaves.filter((leave) => leave.status === "approved").length;
   const latestPayslip = payslips.find((payslip) => payslip.employeeId === currentEmployee?.id);
+  const upcomingHolidays = holidays
+    .filter((holiday) => holiday.date >= todayInIndia())
+    .sort((first, second) => first.date.localeCompare(second.date))
+    .slice(0, 4);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -153,18 +158,29 @@ export default function Dashboard() {
         <Card className="p-6 shadow-soft">
           <h3 className="font-semibold">Upcoming Holidays</h3>
           <ul className="mt-4 space-y-3">
-            {holidays.slice(0, 4).map((h) => (
+            {upcomingHolidays.map((h) => (
               <li
                 key={h.id}
                 className="flex items-center justify-between rounded-xl border bg-background/50 px-3 py-2"
               >
                 <div>
                   <p className="text-sm font-medium">{h.name}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(h.date).toDateString()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(`${h.date}T00:00:00`).toLocaleDateString("en-IN", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
                 </div>
                 <StatusBadge status={h.type} />
               </li>
             ))}
+            {!upcomingHolidays.length && (
+              <li className="rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                No upcoming holidays have been published.
+              </li>
+            )}
           </ul>
         </Card>
         <Card className="p-6 shadow-soft">

@@ -40,7 +40,20 @@ const taskFieldsSchema = z.object({
   ).optional(),
 });
 
-function parseTask(schema, body) {
+const holidayFieldsSchema = z.object({
+  name: z.string().trim().min(2, "Holiday name is required").max(120),
+  date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid holiday date")
+    .refine(
+      (value) => !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value,
+      "Enter a valid holiday date",
+    ),
+  type: z.enum(["public", "company", "department"]),
+}).strict();
+
+function parseSchema(schema, body) {
   const result = schema.safeParse(body);
   if (!result.success) {
     throw new AppError(result.error.issues[0].message, 400, result.error.flatten());
@@ -126,6 +139,9 @@ function assertCanUseResource(req, resource, config, operation = "read") {
   if (config.roles && !config.roles.includes(req.user.role)) {
     throw new AppError("You do not have permission to access this portal data", 403);
   }
+  if (resource === "holidays" && operation !== "read" && !["hr", "super-admin"].includes(req.user.role)) {
+    throw new AppError("Only HR and super-admin users can manage holidays", 403);
+  }
   if (resource === "tasks") {
     if (operation !== "read" && operation !== "update" && !canAccessPortal(req.user, "team-manager")) {
       throw new AppError("You do not have permission to assign or delete tasks", 403);
@@ -167,7 +183,7 @@ function clean(body) {
 
 async function enrichCreate(req, resource, body) {
   if (resource === "tasks") {
-    const task = parseTask(taskFieldsSchema, body);
+    const task = parseSchema(taskFieldsSchema, body);
     const companyId = selectedCompanyId(req);
     const employee = await taskEmployee(task.employeeId, companyId);
     await requireManagedMember(req.user, employee.id, companyId);
@@ -187,6 +203,9 @@ async function enrichCreate(req, resource, body) {
     record.companyId = String(body.companyId || `c${Date.now()}`).trim();
     record.createdBy = req.user.id;
     return record;
+  }
+  if (resource === "holidays") {
+    return { ...parseSchema(holidayFieldsSchema, body), companyId: selectedCompanyId(req) };
   }
   record.companyId = selectedCompanyId(req);
 
@@ -294,7 +313,7 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
   const config = getConfig(resource);
   assertCanUseResource(req, resource, config, "update");
   if (resource === "notifications") {
-    const patch = parseTask(z.object({ read: z.boolean() }).strict(), req.validated.body);
+    const patch = parseSchema(z.object({ read: z.boolean() }).strict(), req.validated.body);
     const notification = await Notification.findOneAndUpdate(
       { _id: req.validated.params.id, ...await scopeForUser(req, config, resource) },
       { $set: patch }, { new: true, runValidators: true },
@@ -303,7 +322,7 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
     return success(res, notification);
   }
   if (resource === "leaves") {
-    const patch = parseTask(z.object({ status: z.enum(["approved", "rejected"]) }).strict(), req.validated.body);
+    const patch = parseSchema(z.object({ status: z.enum(["approved", "rejected"]) }).strict(), req.validated.body);
     const existing = await LeaveRequest.findOne({ _id: req.validated.params.id, ...await scopeForUser(req, config, resource) });
     if (!existing) throw new AppError("Leave request not found", 404);
     await requireManagedMember(req.user, existing.employeeId, existing.companyId);
@@ -313,6 +332,17 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
       { new: true, runValidators: true },
     );
     if (!record) throw new AppError("This leave request has already been reviewed", 409);
+    return success(res, record);
+  }
+  if (resource === "holidays") {
+    const patch = parseSchema(holidayFieldsSchema.partial(), req.validated.body);
+    if (!Object.keys(patch).length) throw new AppError("Provide holiday details to update", 400);
+    const record = await Holiday.findOneAndUpdate(
+      { _id: req.validated.params.id, companyId: selectedCompanyId(req) },
+      { $set: patch },
+      { new: true, runValidators: true },
+    );
+    if (!record) throw new AppError("Holiday not found", 404);
     return success(res, record);
   }
   let patch = clean(req.validated.body);
@@ -330,7 +360,7 @@ export const updateWorkspaceRecord = asyncHandler(async (req, res) => {
     if (!isAssignee && !canManage) {
       throw new AppError("You do not have permission to update this task", 403);
     }
-    patch = parseTask(
+    patch = parseSchema(
       canManage
         ? taskFieldsSchema.partial().extend({ status: taskStatusSchema.optional() }).strict()
         : z.object({ status: taskStatusSchema }).strict(),

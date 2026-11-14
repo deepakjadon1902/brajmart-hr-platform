@@ -37,14 +37,11 @@ const HREmployees = lazy(() => import("@/modules/hr/pages/Employees"));
 const HRAttendance = lazy(() => import("@/modules/hr/pages/Attendance"));
 const HRLeaves = lazy(() => import("@/modules/hr/pages/Leaves"));
 const HRTasks = lazy(() => import("@/modules/hr/pages/Tasks"));
-const HRRecruitment = lazy(() => import("@/modules/hr/pages/Recruitment"));
 const HROnboarding = lazy(() => import("@/modules/hr/pages/Onboarding"));
 const HRExit = lazy(() => import("@/modules/hr/pages/Exit"));
 const HRHolidays = lazy(() => import("@/modules/hr/pages/Holidays"));
-const HRAnalytics = lazy(() => import("@/modules/hr/pages/Analytics"));
 const HRReports = lazy(() => import("@/modules/hr/pages/Reports"));
 const HRMail = lazy(() => import("@/modules/hr/pages/MailCenter"));
-const HRSettings = lazy(() => import("@/modules/hr/pages/Settings"));
 const HRSalary = lazy(() => import("@/modules/super-admin/pages/Salary"));
 const HRClients = lazy(() => import("@/modules/digital-marketing/pages/Clients"));
 const MailCenter = lazy(() => import("@/modules/hr/pages/MailCenter"));
@@ -69,9 +66,7 @@ const SATasks = lazy(() => import("@/modules/super-admin/pages/Tasks"));
 const SASalary = lazy(() => import("@/modules/super-admin/pages/Salary"));
 const SAAudit = lazy(() => import("@/modules/super-admin/pages/AuditLogs"));
 const SASystem = lazy(() => import("@/modules/super-admin/pages/SystemLogs"));
-const SAAnalytics = lazy(() => import("@/modules/super-admin/pages/Analytics"));
 const SALocalization = lazy(() => import("@/modules/super-admin/pages/Localization"));
-const SASettings = lazy(() => import("@/modules/super-admin/pages/Settings"));
 
 // Digital Marketing pages
 const DMDashboard = lazy(() => import("@/modules/digital-marketing/pages/Dashboard"));
@@ -142,15 +137,12 @@ export function AppRoutes() {
           <Route path="attendance" element={<HRAttendance />} />
           <Route path="leaves" element={<HRLeaves />} />
           <Route path="tasks" element={<HRTasks />} />
-          <Route path="recruitment" element={<HRRecruitment />} />
           <Route path="onboarding" element={<HROnboarding />} />
           <Route path="exit" element={<HRExit />} />
           <Route path="holidays" element={<HRHolidays />} />
-          <Route path="analytics" element={<HRAnalytics />} />
           <Route path="reports" element={<HRReports />} />
           <Route path="salary" element={<HRSalary />} />
           <Route path="mail" element={<HRMail />} />
-          <Route path="settings" element={<HRSettings />} />
         </Route>
 
         {/* Team Manager */}
@@ -193,9 +185,7 @@ export function AppRoutes() {
           <Route path="salary" element={<SASalary />} />
           <Route path="audit" element={<SAAudit />} />
           <Route path="system" element={<SASystem />} />
-          <Route path="analytics" element={<SAAnalytics />} />
           <Route path="localization" element={<SALocalization />} />
-          <Route path="settings" element={<SASettings />} />
         </Route>
 
         {/* Digital Marketing */}

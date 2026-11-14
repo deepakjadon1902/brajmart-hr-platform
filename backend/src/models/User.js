@@ -37,6 +37,23 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, sparse: true, index: true },
     status: { type: String, enum: ["active", "inactive", "on-leave"], default: "active" },
     joinDate: { type: Date, default: Date.now },
+    lastWorkingDay: Date,
+    exitDate: Date,
+    separations: {
+      type: [
+        new mongoose.Schema(
+          {
+            lastWorkingDay: { type: Date, required: true },
+            exitDate: { type: Date, required: true },
+            recordedAt: { type: Date, required: true, default: Date.now },
+            recordedById: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            recordedByName: { type: String, trim: true, maxlength: 120 },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     refreshTokenHash: { type: String, select: false },
     lastLoginAt: Date,
   },

@@ -74,6 +74,44 @@ export const updateUserSchema = z.object({
 
 export const idParamSchema = z.object({ params: z.object({ id: objectId }) });
 
+function indiaDateKey(date) {
+  return new Date(date.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+}
+
+export const separateUserSchema = z.object({
+  params: z.object({ id: objectId }),
+  body: z
+    .object({
+      lastWorkingDay: z.coerce.date(),
+      exitDate: z.coerce.date(),
+    })
+    .superRefine((dates, context) => {
+      if (dates.exitDate < dates.lastWorkingDay) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["exitDate"],
+          message: "Exit date must be on or after the last working day",
+        });
+      }
+
+      const today = indiaDateKey(new Date());
+      if (indiaDateKey(dates.lastWorkingDay) > today) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["lastWorkingDay"],
+          message: "Last working day cannot be in the future",
+        });
+      }
+      if (indiaDateKey(dates.exitDate) > today) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["exitDate"],
+          message: "Exit date cannot be in the future",
+        });
+      }
+    }),
+});
+
 function selectedCompanyId(req) {
   if (req.user.role !== "super-admin") return req.user.companyId;
   const requested = String(req.headers["x-company-id"] || req.validated?.query?.companyId || "").trim();
@@ -191,6 +229,9 @@ export const updateUser = asyncHandler(async (req, res) => {
       : { _id: req.validated.params.id, companyId: req.user.companyId };
   const user = await User.findOne(filter);
   if (!user) throw new AppError("User not found", 404);
+  if (user.exitDate && updates.status === "active") {
+    throw new AppError("Use the rehire action to restore an exited employee", 400);
+  }
 
   if ((updates.companyId && updates.companyId !== user.companyId) || (updates.role && updates.role !== "employee")) {
     user.teamId = undefined;
@@ -202,9 +243,9 @@ export const updateUser = asyncHandler(async (req, res) => {
   return success(res, user);
 });
 
-export const removeUser = asyncHandler(async (req, res) => {
+export const separateUser = asyncHandler(async (req, res) => {
   if (req.validated.params.id === req.user.id) {
-    throw new AppError("You cannot delete your own account", 400);
+    throw new AppError("You cannot process your own exit", 400);
   }
 
   const filter =
@@ -215,9 +256,46 @@ export const removeUser = asyncHandler(async (req, res) => {
   if (!user) throw new AppError("User not found", 404);
 
   if (req.user.role !== "super-admin" && user.role === "super-admin") {
-    throw new AppError("You do not have permission to delete a super-admin user", 403);
+    throw new AppError("You do not have permission to process a super-admin exit", 403);
+  }
+  if (user.exitDate) throw new AppError("This employee has already exited", 409);
+
+  const { lastWorkingDay, exitDate } = req.validated.body;
+  user.status = "inactive";
+  user.lastWorkingDay = lastWorkingDay;
+  user.exitDate = exitDate;
+  user.separations.push({
+    lastWorkingDay,
+    exitDate,
+    recordedAt: new Date(),
+    recordedById: req.user._id,
+    recordedByName: req.user.name,
+  });
+  user.refreshTokenHash = undefined;
+  await user.save();
+  return success(res, user);
+});
+
+export const rehireUser = asyncHandler(async (req, res) => {
+  if (req.validated.params.id === req.user.id) {
+    throw new AppError("You cannot rehire your own account", 400);
   }
 
-  await user.deleteOne();
-  return success(res, { id: user.id, deleted: true });
+  const filter =
+    req.user.role === "super-admin"
+      ? { _id: req.validated.params.id }
+      : { _id: req.validated.params.id, companyId: req.user.companyId };
+  const user = await User.findOne(filter);
+  if (!user) throw new AppError("User not found", 404);
+  if (!user.exitDate) throw new AppError("This employee has no exit record to restore", 409);
+  if (user.role === "super-admin") {
+    throw new AppError("A super-admin account cannot be rehired through employee exit management", 400);
+  }
+
+  user.status = "active";
+  user.lastWorkingDay = undefined;
+  user.exitDate = undefined;
+  user.refreshTokenHash = undefined;
+  await user.save();
+  return success(res, user);
 });

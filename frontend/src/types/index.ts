@@ -22,6 +22,17 @@ export interface User {
   bankAccount?: string;
   pan?: string;
   joinDate?: string;
+  lastWorkingDay?: string;
+  exitDate?: string;
+  separations?: SeparationRecord[];
+}
+
+export interface SeparationRecord {
+  lastWorkingDay: string;
+  exitDate: string;
+  recordedAt: string;
+  recordedById?: string;
+  recordedByName?: string;
 }
 
 export interface Company {
@@ -142,6 +153,9 @@ export interface Payslip {
 
 export interface Asset {
   id: string;
+  employeeId?: string;
+  employeeName?: string;
+  companyId?: string;
   type: "Laptop" | "ID Card" | "SIM Card" | "Headset" | "Monitor" | "Accessory";
   name: string;
   serial?: string;

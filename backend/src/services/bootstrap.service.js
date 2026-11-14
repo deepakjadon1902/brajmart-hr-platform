@@ -34,7 +34,7 @@ export async function ensurePermanentAccounts() {
       existing.role = role;
       existing.department = existing.department || department;
       existing.designation = existing.designation || designation;
-      existing.status = "active";
+      if (!existing.exitDate) existing.status = "active";
       if (!existing.passwordHash) await existing.setPassword(password);
       await existing.save();
       continue;

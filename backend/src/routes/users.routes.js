@@ -6,7 +6,9 @@ import {
   idParamSchema,
   listUsers,
   listUsersSchema,
-  removeUser,
+  rehireUser,
+  separateUser,
+  separateUserSchema,
   updateUser,
   updateUserSchema,
 } from "../controllers/users.controller.js";
@@ -19,5 +21,6 @@ usersRoutes.use(requireAuth);
 usersRoutes.get("/", allowRoles("hr", "team-manager", "super-admin"), validate(listUsersSchema), listUsers);
 usersRoutes.post("/", allowRoles("hr", "super-admin"), validate(createUserSchema), createUser);
 usersRoutes.get("/:id", validate(idParamSchema), getUser);
+usersRoutes.patch("/:id/exit", allowRoles("hr", "super-admin"), validate(separateUserSchema), separateUser);
+usersRoutes.patch("/:id/rehire", allowRoles("hr", "super-admin"), validate(idParamSchema), rehireUser);
 usersRoutes.patch("/:id", validate(updateUserSchema), updateUser);
-usersRoutes.delete("/:id", allowRoles("hr", "super-admin"), validate(idParamSchema), removeUser);

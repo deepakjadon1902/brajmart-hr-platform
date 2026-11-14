@@ -25,6 +25,7 @@ const MAP: Record<string, string> = {
   rejected: "bg-destructive/15 text-destructive",
   absent: "bg-destructive/15 text-destructive",
   inactive: "bg-muted text-muted-foreground",
+  exited: "bg-destructive/15 text-destructive",
   returned: "bg-muted text-muted-foreground",
   "in-repair": "bg-warning/15 text-warning",
 };

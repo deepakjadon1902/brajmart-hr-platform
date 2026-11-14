@@ -38,17 +38,12 @@ const HRAttendance = lazy(() => import("@/modules/hr/pages/Attendance"));
 const HRLeaves = lazy(() => import("@/modules/hr/pages/Leaves"));
 const HRTasks = lazy(() => import("@/modules/hr/pages/Tasks"));
 const HRRecruitment = lazy(() => import("@/modules/hr/pages/Recruitment"));
-const HRInterviews = lazy(() => import("@/modules/hr/pages/Interviews"));
-const HRPerformance = lazy(() => import("@/modules/hr/pages/Performance"));
 const HROnboarding = lazy(() => import("@/modules/hr/pages/Onboarding"));
 const HRExit = lazy(() => import("@/modules/hr/pages/Exit"));
-const HRAssets = lazy(() => import("@/modules/hr/pages/Assets"));
 const HRHolidays = lazy(() => import("@/modules/hr/pages/Holidays"));
-const HRShifts = lazy(() => import("@/modules/hr/pages/Shifts"));
 const HRAnalytics = lazy(() => import("@/modules/hr/pages/Analytics"));
 const HRReports = lazy(() => import("@/modules/hr/pages/Reports"));
 const HRMail = lazy(() => import("@/modules/hr/pages/MailCenter"));
-const HRAnnouncements = lazy(() => import("@/modules/hr/pages/Announcements"));
 const HRSettings = lazy(() => import("@/modules/hr/pages/Settings"));
 const HRSalary = lazy(() => import("@/modules/super-admin/pages/Salary"));
 const HRClients = lazy(() => import("@/modules/digital-marketing/pages/Clients"));
@@ -148,18 +143,13 @@ export function AppRoutes() {
           <Route path="leaves" element={<HRLeaves />} />
           <Route path="tasks" element={<HRTasks />} />
           <Route path="recruitment" element={<HRRecruitment />} />
-          <Route path="interviews" element={<HRInterviews />} />
-          <Route path="performance" element={<HRPerformance />} />
           <Route path="onboarding" element={<HROnboarding />} />
           <Route path="exit" element={<HRExit />} />
-          <Route path="assets" element={<HRAssets />} />
           <Route path="holidays" element={<HRHolidays />} />
-          <Route path="shifts" element={<HRShifts />} />
           <Route path="analytics" element={<HRAnalytics />} />
           <Route path="reports" element={<HRReports />} />
           <Route path="salary" element={<HRSalary />} />
           <Route path="mail" element={<HRMail />} />
-          <Route path="announcements" element={<HRAnnouncements />} />
           <Route path="settings" element={<HRSettings />} />
         </Route>
 

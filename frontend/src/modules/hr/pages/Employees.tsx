@@ -6,29 +6,18 @@ import { Button } from "@/components/ui/button";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { PasswordInput } from "@/components/common/PasswordInput";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { ExternalLink, FileText, Pencil, Plus } from "lucide-react";
+import { ExternalLink, FileText, LogOut, Pencil, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   createEmployee,
-  deleteEmployee,
   fetchEmployees,
   fetchWorkspace,
   updateDocumentStatus,
   updateEmployee,
 } from "@/store/slices/workspaceSlice";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -275,6 +264,7 @@ function renderEmployeeFields(
 
 export default function Employees() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
   const { employees, documents } = useAppSelector((s) => s.workspace);
   const companies = useAppSelector((s) => s.company.list);
@@ -491,10 +481,14 @@ export default function Employees() {
           { key: "bankName", header: "Bank" },
           { key: "location", header: "Location" },
           { key: "joinDate", header: "Joined", render: (e) => formatDate(e.joinDate) },
-          { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
+          {
+            key: "status",
+            header: "Status",
+            render: (e) => <StatusBadge status={e.exitDate ? "exited" : e.status} />,
+          },
           {
             key: "id",
-            header: "Access",
+            header: "Actions",
             render: (employee) => (
               <div className="flex gap-2">
                 <Button
@@ -513,57 +507,40 @@ export default function Employees() {
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
-                <Button
-                  size="sm"
-                  variant={employee.status === "inactive" ? "default" : "outline"}
-                  onClick={async () => {
-                    try {
-                      await dispatch(
-                        updateEmployee({ id: employee.id, status: "active" }),
-                      ).unwrap();
-                      await refreshSavedData();
-                      toast.success(`${employee.name} can access the portal`);
-                    } catch (error) {
-                      toast.error(toastErrorMessage(error, "Unable to update access"));
-                    }
-                  }}
-                >
-                  Allow
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="destructive">
-                      Delete
+                {employee.id !== user?.id &&
+                  employee.role !== "super-admin" &&
+                  employee.status !== "inactive" &&
+                  !employee.exitDate && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        navigate(`/hr/exit?employeeId=${encodeURIComponent(employee.id)}`)
+                      }
+                    >
+                      <LogOut className="mr-1 h-4 w-4" />
+                      Exit / Inactive
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete employee?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This permanently removes {employee.name} from the employee panel and
-                        database. They will not be able to sign in again with this portal account.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={async () => {
-                          try {
-                            await dispatch(
-                              deleteEmployee({ id: employee.id, name: employee.name }),
-                            ).unwrap();
-                            toast.success(`${employee.name} deleted`);
-                          } catch (error) {
-                            toast.error(toastErrorMessage(error, "Unable to delete employee"));
-                          }
-                        }}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  )}
+                {employee.status !== "active" && !employee.exitDate && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await dispatch(
+                          updateEmployee({ id: employee.id, status: "active" }),
+                        ).unwrap();
+                        await refreshSavedData();
+                        toast.success(`${employee.name} can access the portal`);
+                      } catch (error) {
+                        toast.error(toastErrorMessage(error, "Unable to update access"));
+                      }
+                    }}
+                  >
+                    Allow access
+                  </Button>
+                )}
               </div>
             ),
           },

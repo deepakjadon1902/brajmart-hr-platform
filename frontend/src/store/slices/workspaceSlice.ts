@@ -175,6 +175,9 @@ function normalizeEmployee(item: Partial<Employee> & { _id?: string }): Employee
     bankName: item.bankName,
     bankAccount: item.bankAccount,
     pan: item.pan,
+    lastWorkingDay: item.lastWorkingDay,
+    exitDate: item.exitDate,
+    separations: item.separations,
   };
 }
 
@@ -366,14 +369,26 @@ export const updateEmployee = createAsyncThunk(
   },
 );
 
-export const deleteEmployee = createAsyncThunk(
-  "workspace/deleteEmployee",
-  async (employee: Pick<Employee, "id" | "name">) => {
+export const separateEmployee = createAsyncThunk(
+  "workspace/separateEmployee",
+  async ({ id, lastWorkingDay, exitDate }: Pick<Employee, "id"> & { lastWorkingDay: string; exitDate: string }) => {
     try {
-      await api.delete(`/users/${employee.id}`);
-      return employee;
+      const { data } = await api.patch(`/users/${id}/exit`, { lastWorkingDay, exitDate });
+      return normalizeEmployee(data.data);
     } catch (error) {
-      throw new Error(apiErrorMessage(error, "Unable to delete employee"));
+      throw new Error(apiErrorMessage(error, "Unable to process employee exit"));
+    }
+  },
+);
+
+export const rehireEmployee = createAsyncThunk(
+  "workspace/rehireEmployee",
+  async (id: string) => {
+    try {
+      const { data } = await api.patch(`/users/${id}/rehire`);
+      return normalizeEmployee(data.data);
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "Unable to rehire employee"));
     }
   },
 );
@@ -681,8 +696,16 @@ const slice = createSlice({
         else state.employees.unshift(action.payload);
         persistWorkspaceCache(state);
       })
-      .addCase(deleteEmployee.fulfilled, (state, action) => {
-        state.employees = state.employees.filter((employee) => employee.id !== action.payload.id);
+      .addCase(separateEmployee.fulfilled, (state, action) => {
+        const existing = state.employees.find((item) => item.id === action.payload.id);
+        if (existing) Object.assign(existing, action.payload);
+        else state.employees.unshift(action.payload);
+        persistWorkspaceCache(state);
+      })
+      .addCase(rehireEmployee.fulfilled, (state, action) => {
+        const existing = state.employees.find((item) => item.id === action.payload.id);
+        if (existing) Object.assign(existing, action.payload);
+        else state.employees.unshift(action.payload);
         persistWorkspaceCache(state);
       })
       .addCase(addClient.fulfilled, (state, action) => {
